@@ -1,17 +1,16 @@
-# another_home
+# Another Home
 
-A new Flutter project.
+This project has been reorganized around clean architecture principles.
 
-## Getting Started
+## Architecture
 
-This project is a starting point for a Flutter application.
+- Domain layer: entities, repositories, and use cases define business rules.
+- Data layer: repository implementations isolate data access and framework concerns.
+- Presentation layer: pages and widgets depend on use cases rather than concrete implementations.
+- Dependency rule: inner layers are independent of UI, framework, and database choices.
 
-A few resources to get you started if this is your first Flutter project:
+## Project structure
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+- lib/features/auth: authentication flow
+- lib/features/dashboard: dashboard and module pages
+- lib/core/di: dependency injection container
