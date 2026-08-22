@@ -1,12 +1,67 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:another_home/core/theme/app_colors.dart';
 import 'package:another_home/core/theme/glass_card.dart';
 import 'package:another_home/core/theme/glass_background.dart';
 import 'package:another_home/core/theme/glass_badge.dart';
+import 'package:another_home/core/di/service_locator.dart';
+import '../../../../operations/presentation/bloc/complaint/complaint_bloc.dart';
+import '../../../../operations/presentation/bloc/complaint/complaint_event.dart';
+import '../../../../operations/presentation/bloc/complaint/complaint_state.dart';
 import 'new_complaint_page.dart';
 
 class ComplaintPage extends StatelessWidget {
   const ComplaintPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => ComplaintBloc(
+        getIncidentsUseCase: ServiceLocator.instance.getIncidentsUseCase,
+        reportIncidentUseCase: ServiceLocator.instance.reportIncidentUseCase,
+      )..add(const LoadComplaints()),
+      child: const ComplaintView(),
+    );
+  }
+}
+
+class ComplaintView extends StatelessWidget {
+  const ComplaintView({super.key});
+
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'resolved':
+      case 'completed':
+        return AppColors.green;
+      case 'assigned':
+        return AppColors.orange;
+      case 'in progress':
+        return AppColors.cyan;
+      default:
+        return AppColors.red;
+    }
+  }
+
+  IconData _getCategoryIcon(String category) {
+    switch (category.toLowerCase()) {
+      case 'plumbing':
+        return Icons.water_drop_outlined;
+      case 'electrical':
+        return Icons.lightbulb_outline;
+      case 'furniture':
+        return Icons.chair_outlined;
+      default:
+        return Icons.build_outlined;
+    }
+  }
+
+  String _formatDate(DateTime date) {
+    final months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    return '${date.day} ${months[date.month - 1]} ${date.year}';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,20 +78,27 @@ class ComplaintPage extends StatelessWidget {
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 12),
-            child: GlassCard(
-              width: 40,
-              height: 40,
-              padding: EdgeInsets.zero,
-              borderRadius: BorderRadius.circular(12),
-              color: AppColors.primary.withValues(alpha: 0.25),
-              borderColor: AppColors.primary.withValues(alpha: 0.4),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const NewComplaintPage()),
+            child: Builder(
+              builder: (context) {
+                return GlassCard(
+                  width: 40,
+                  height: 40,
+                  padding: EdgeInsets.zero,
+                  borderRadius: BorderRadius.circular(12),
+                  color: AppColors.primary.withValues(alpha: 0.25),
+                  borderColor: AppColors.primary.withValues(alpha: 0.4),
+                  onTap: () async {
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const NewComplaintPage()),
+                    );
+                    if (result == true && context.mounted) {
+                      context.read<ComplaintBloc>().add(const LoadComplaints());
+                    }
+                  },
+                  child: const Icon(Icons.add, color: AppColors.text, size: 22),
                 );
-              },
-              child: const Icon(Icons.add, color: AppColors.text, size: 22),
+              }
             ),
           ),
         ],
@@ -48,31 +110,46 @@ class ComplaintPage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: ListView(
-                  padding: EdgeInsets.zero,
-                  children: [
-                    _buildComplaintCard(
-                      title: 'Ceiling fan not working',
-                      status: 'In Progress',
-                      badgeColor: AppColors.red,
-                      note: '18 Jul 2026',
-                      icon: Icons.lightbulb_outline,
-                    ),
-                    _buildComplaintCard(
-                      title: 'Leaking pipe under sink',
-                      status: 'Assigned',
-                      badgeColor: AppColors.orange,
-                      note: '15 Jul 2026',
-                      icon: Icons.water_drop_outlined,
-                    ),
-                    _buildComplaintCard(
-                      title: 'Broken study chair',
-                      status: 'Completed',
-                      badgeColor: AppColors.green,
-                      note: '10 Jul 2026',
-                      icon: Icons.chair_outlined,
-                    ),
-                  ],
+                child: BlocBuilder<ComplaintBloc, ComplaintState>(
+                  builder: (context, state) {
+                    if (state is ComplaintLoading) {
+                      return const Center(
+                        child: CircularProgressIndicator(color: AppColors.primary),
+                      );
+                    } else if (state is ComplaintFailure) {
+                      return Center(
+                        child: Text(
+                          'Failed to load complaints: ${state.message}',
+                          style: const TextStyle(color: AppColors.red),
+                        ),
+                      );
+                    } else if (state is ComplaintLoadSuccess) {
+                      final incidents = state.incidents;
+                      if (incidents.isEmpty) {
+                        return const Center(
+                          child: Text(
+                            'No complaints logged yet.',
+                            style: TextStyle(color: AppColors.muted),
+                          ),
+                        );
+                      }
+                      return ListView.builder(
+                        padding: EdgeInsets.zero,
+                        itemCount: incidents.length,
+                        itemBuilder: (context, index) {
+                          final incident = incidents[index];
+                          return _buildComplaintCard(
+                            title: incident.description,
+                            status: incident.status,
+                            badgeColor: _getStatusColor(incident.status),
+                            note: _formatDate(incident.createdAt),
+                            icon: _getCategoryIcon(incident.category),
+                          );
+                        },
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  },
                 ),
               ),
             ],

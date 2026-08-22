@@ -6,6 +6,7 @@ import 'package:another_home/core/theme/glass_badge.dart';
 import 'package:another_home/core/theme/glass_button.dart';
 import 'package:another_home/features/auth/domain/entities/user.dart';
 import 'package:another_home/features/auth/presentation/pages/login_page.dart';
+import 'package:another_home/core/di/service_locator.dart';
 
 class ProfilePage extends StatelessWidget {
   final User user;
@@ -228,12 +229,15 @@ class ProfilePage extends StatelessWidget {
             child: const Text('Cancel', style: TextStyle(color: AppColors.muted)),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(ctx);
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (_) => const LoginPage()),
-                (route) => false,
-              );
+              await ServiceLocator.instance.authApiService.logout();
+              if (context.mounted) {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const LoginPage()),
+                  (route) => false,
+                );
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.red,

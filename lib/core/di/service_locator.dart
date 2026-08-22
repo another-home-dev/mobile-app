@@ -10,6 +10,14 @@ import 'package:another_home/core/network/services/accommodation_api_service.dar
 import 'package:another_home/core/network/services/operations_api_service.dart';
 import 'package:another_home/core/network/services/finance_api_service.dart';
 import 'package:another_home/core/network/services/notifications_api_service.dart';
+import 'package:another_home/features/operations/data/repositories/operations_repository_impl.dart';
+import 'package:another_home/features/operations/domain/repositories/operations_repository.dart';
+import 'package:another_home/features/operations/domain/usecases/get_incidents_usecase.dart';
+import 'package:another_home/features/operations/domain/usecases/report_incident_usecase.dart';
+import 'package:another_home/features/operations/domain/usecases/get_visitors_usecase.dart';
+import 'package:another_home/features/operations/domain/usecases/request_visitor_usecase.dart';
+import 'package:another_home/core/services/secure_storage_service.dart';
+
 
 class ServiceLocator {
   ServiceLocator._();
@@ -21,19 +29,29 @@ class ServiceLocator {
   static ServiceLocator get instance => _instance;
 
   // Base API Client
-  late final ApiClient apiClient = ApiClient();
+  late final ApiClient apiClient = ApiClient(secureStorage: secureStorageService);
+
+  // Secure Storage
+  late final SecureStorageService secureStorageService = SecureStorageService();
 
   // API Services corresponding to Backend Microservices
-  late final AuthApiService authApiService = AuthApiService(apiClient);
+  late final AuthApiService authApiService = AuthApiService(apiClient, secureStorageService);
   late final AccommodationApiService accommodationApiService = AccommodationApiService(apiClient);
   late final OperationsApiService operationsApiService = OperationsApiService(apiClient);
   late final FinanceApiService financeApiService = FinanceApiService(apiClient);
   late final NotificationsApiService notificationsApiService = NotificationsApiService(apiClient);
 
-  late final AuthRepository authRepository = AuthRepositoryImpl();
+  late final AuthRepository authRepository = AuthRepositoryImpl(authApiService);
   late final LoginUseCase loginUseCase = LoginUseCase(authRepository);
 
   late final DashboardRepository dashboardRepository = DashboardRepositoryImpl();
   late final GetDashboardSummaryUseCase dashboardSummaryUseCase =
       GetDashboardSummaryUseCase(dashboardRepository);
+
+  // Operations
+  late final OperationsRepository operationsRepository = OperationsRepositoryImpl(operationsApiService);
+  late final GetIncidentsUseCase getIncidentsUseCase = GetIncidentsUseCase(operationsRepository);
+  late final ReportIncidentUseCase reportIncidentUseCase = ReportIncidentUseCase(operationsRepository);
+  late final GetVisitorsUseCase getVisitorsUseCase = GetVisitorsUseCase(operationsRepository);
+  late final RequestVisitorUseCase requestVisitorUseCase = RequestVisitorUseCase(operationsRepository);
 }

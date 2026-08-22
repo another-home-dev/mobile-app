@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'core/theme/app_colors.dart';
-import 'features/auth/presentation/pages/login_page.dart';
+import 'features/auth/presentation/pages/splash_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -10,10 +10,13 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
+  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Another Home',
+      navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.dark,
@@ -48,7 +51,7 @@ class MyApp extends StatelessWidget {
         ),
         textTheme: ThemeData.dark().textTheme.apply(bodyColor: AppColors.text, displayColor: AppColors.text),
       ),
-      home: const LoginPage(),
+      home: const SplashPage(),
     );
   }
 }

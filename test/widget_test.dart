@@ -8,5 +8,8 @@ void main() {
 
     expect(find.text('ANOTHER HOME'), findsOneWidget);
     expect(find.text('Welcome Back'), findsOneWidget);
+
+    // Let the splash screen timer and navigation transition complete
+    await tester.pump(const Duration(seconds: 2));
   });
 }
