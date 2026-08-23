@@ -10,8 +10,9 @@ class AccommodationApiService {
   /// GET /accommodation/rooms
   Future<List<RoomModel>> getRooms() async {
     final response = await _apiClient.get('/accommodation/rooms');
-    if (response is List) {
-      return response
+    final data = (response as Map<String, dynamic>)['data'];
+    if (data is List) {
+      return data
           .map((json) => RoomModel.fromJson(json as Map<String, dynamic>))
           .toList();
     }
@@ -25,7 +26,8 @@ class AccommodationApiService {
       '/accommodation/rooms',
       body: createRoomDto.toJson(),
     );
-    return RoomModel.fromJson(response as Map<String, dynamic>);
+    final data = (response as Map<String, dynamic>)['data'];
+    return RoomModel.fromJson(data as Map<String, dynamic>);
   }
 
   /// Assign a student to a specific bed
@@ -35,6 +37,7 @@ class AccommodationApiService {
       '/accommodation/allocations',
       body: allocateBedDto.toJson(),
     );
-    return BedAllocationModel.fromJson(response as Map<String, dynamic>);
+    final data = (response as Map<String, dynamic>)['data'];
+    return BedAllocationModel.fromJson(data as Map<String, dynamic>);
   }
 }
