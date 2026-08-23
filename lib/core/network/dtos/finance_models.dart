@@ -1,52 +1,49 @@
 class SubmitPaymentDto {
   final String invoiceId;
-  final double amountPaid;
-  final String referenceNumber;
+  final double amount;
+  final String? referenceNumber;
 
   const SubmitPaymentDto({
     required this.invoiceId,
-    required this.amountPaid,
-    required this.referenceNumber,
+    required this.amount,
+    this.referenceNumber,
   });
 
   Map<String, dynamic> toJson() => {
         'invoiceId': invoiceId,
-        'amountPaid': amountPaid,
-        'referenceNumber': referenceNumber,
+        'amount': amount,
+        if (referenceNumber != null) 'referenceNumber': referenceNumber,
       };
 }
 
 class InvoiceModel {
-  final String id;
+  final String invoiceId;
   final String studentId;
   final double amount;
   final String dueDate;
-  final String status; // e.g. PENDING, PAID, OVERDUE
+  final String status; // Pending, Paid, or Overdue (computed server-side)
   final String description;
-  final String? referenceNumber;
   final DateTime? paidAt;
   final DateTime createdAt;
 
   const InvoiceModel({
-    required this.id,
+    required this.invoiceId,
     required this.studentId,
     required this.amount,
     required this.dueDate,
     required this.status,
     required this.description,
-    this.referenceNumber,
     this.paidAt,
     required this.createdAt,
   });
 
   factory InvoiceModel.fromJson(Map<String, dynamic> json) => InvoiceModel(
-        id: json['id'] as String,
+        invoiceId: json['invoiceId'] as String,
         studentId: json['studentId'] as String,
         amount: (json['amount'] as num).toDouble(),
         dueDate: json['dueDate'] as String,
         status: json['status'] as String,
         description: json['description'] as String,
-        referenceNumber: json['referenceNumber'] as String?,
         paidAt: json['paidAt'] != null
             ? DateTime.parse(json['paidAt'] as String)
             : null,

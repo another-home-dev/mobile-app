@@ -6,12 +6,13 @@ class FinanceApiService {
 
   FinanceApiService(this._apiClient);
 
-  /// Get all pending fee invoices for a student
+  /// Get all fee invoices for a student
   /// GET /finance/invoices/{studentId}
   Future<List<InvoiceModel>> getInvoices(String studentId) async {
     final response = await _apiClient.get('/finance/invoices/$studentId');
-    if (response is List) {
-      return response
+    final data = (response as Map<String, dynamic>)['data'];
+    if (data is List) {
+      return data
           .map((json) => InvoiceModel.fromJson(json as Map<String, dynamic>))
           .toList();
     }
