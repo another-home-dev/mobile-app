@@ -1,12 +1,45 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:another_home/core/theme/app_colors.dart';
 import 'package:another_home/core/theme/glass_card.dart';
 import 'package:another_home/core/theme/glass_button.dart';
 import 'package:another_home/core/theme/glass_background.dart';
 import 'package:another_home/core/theme/glass_badge.dart';
+import 'package:another_home/core/di/service_locator.dart';
+import '../../../../operations/presentation/bloc/visitor/visitor_bloc.dart';
+import '../../../../operations/presentation/bloc/visitor/visitor_event.dart';
+import '../../../../operations/presentation/bloc/visitor/visitor_state.dart';
 
 class VisitorPage extends StatelessWidget {
   const VisitorPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => VisitorBloc(
+        getVisitorsUseCase: ServiceLocator.instance.getVisitorsUseCase,
+        requestVisitorUseCase: ServiceLocator.instance.requestVisitorUseCase,
+      )..add(const LoadVisitors()),
+      child: const VisitorView(),
+    );
+  }
+}
+
+class VisitorView extends StatelessWidget {
+  const VisitorView({super.key});
+
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'approved':
+        return AppColors.green;
+      case 'pending':
+        return AppColors.primary;
+      case 'rejected':
+        return AppColors.red;
+      default:
+        return AppColors.muted;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,50 +56,109 @@ class VisitorPage extends StatelessWidget {
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 12),
-            child: GlassCard(
-              width: 40,
-              height: 40,
-              padding: EdgeInsets.zero,
-              borderRadius: BorderRadius.circular(12),
-              color: AppColors.cyan.withValues(alpha: 0.25),
-              borderColor: AppColors.cyan.withValues(alpha: 0.4),
-              onTap: () {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const AddVisitorPage()));
-              },
-              child: const Icon(Icons.add, color: AppColors.text, size: 22),
+            child: Builder(
+              builder: (context) {
+                return GlassCard(
+                  width: 40,
+                  height: 40,
+                  padding: EdgeInsets.zero,
+                  borderRadius: BorderRadius.circular(12),
+                  color: AppColors.cyan.withValues(alpha: 0.25),
+                  borderColor: AppColors.cyan.withValues(alpha: 0.4),
+                  onTap: () async {
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const AddVisitorPage()),
+                    );
+                    if (result == true && context.mounted) {
+                      context.read<VisitorBloc>().add(const LoadVisitors());
+                    }
+                  },
+                  child: const Icon(Icons.add, color: AppColors.text, size: 22),
+                );
+              }
             ),
           ),
         ],
       ),
       body: GlassBackground(
         child: SafeArea(
-          child: Column(
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 4),
-                      Row(
+          child: BlocBuilder<VisitorBloc, VisitorState>(
+            builder: (context, state) {
+              if (state is VisitorLoading) {
+                return const Center(
+                  child: CircularProgressIndicator(color: AppColors.cyan),
+                );
+              } else if (state is VisitorFailure) {
+                return Center(
+                  child: Text(
+                    'Failed to load visitors: ${state.message}',
+                    style: const TextStyle(color: AppColors.red),
+                  ),
+                );
+              } else if (state is VisitorLoadSuccess) {
+                final visitors = state.visitors;
+
+                final approvedCount = visitors.where((v) => v.status.toLowerCase() == 'approved').length;
+                final pendingCount = visitors.where((v) => v.status.toLowerCase() == 'pending').length;
+                final rejectedCount = visitors.where((v) => v.status.toLowerCase() == 'rejected').length;
+
+                return Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      child: Row(
                         children: [
-                          Expanded(child: _buildStatCard('1', 'Approved', AppColors.green)),
+                          Expanded(child: _buildStatCard(approvedCount.toString(), 'Approved', AppColors.green)),
                           const SizedBox(width: 12),
-                          Expanded(child: _buildStatCard('1', 'Pending', AppColors.orange)),
+                          Expanded(child: _buildStatCard(pendingCount.toString(), 'Pending', AppColors.orange)),
                           const SizedBox(width: 12),
-                          Expanded(child: _buildStatCard('1', 'Rejected', AppColors.red)),
+                          Expanded(child: _buildStatCard(rejectedCount.toString(), 'Rejected', AppColors.red)),
                         ],
                       ),
-                      const SizedBox(height: 28),
-                      _buildVisitorCard(name: 'Ravi Perera', id: '9876543210V', date: '20 Jul 2026', time: '10:00 AM', purpose: 'Family Visit', status: 'Approved', statusColor: AppColors.green),
-                      _buildVisitorCard(name: 'Nimasha Silva', id: '0023456789V', date: '22 Jul 2026', time: '02:00 PM', purpose: 'Academic Con...', status: 'Pending', statusColor: AppColors.primary),
-                      _buildVisitorCard(name: 'Kasun Jayawardena', id: '9945678901V', date: '12 Jul 2026', time: '11:30 AM', purpose: 'Personal Visit', status: 'Rejected', statusColor: AppColors.red),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+                    ),
+                    Expanded(
+                      child: visitors.isEmpty
+                          ? const Center(
+                              child: Text(
+                                'No visitor requests yet.',
+                                style: TextStyle(color: AppColors.muted),
+                              ),
+                            )
+                          : ListView.builder(
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                              itemCount: visitors.length,
+                              itemBuilder: (context, index) {
+                                final visitor = visitors[index];
+                                
+                                // Try to extract NIC and Purpose from relation field if structured
+                                String nic = 'N/A';
+                                String purpose = visitor.relation;
+                                if (visitor.relation.contains('NIC:')) {
+                                  final parts = visitor.relation.split('|');
+                                  if (parts.length == 2) {
+                                    nic = parts[0].replaceAll('NIC:', '').trim();
+                                    purpose = parts[1].replaceAll('Purpose:', '').trim();
+                                  }
+                                }
+
+                                return _buildVisitorCard(
+                                  name: visitor.visitorName,
+                                  id: nic,
+                                  date: visitor.expectedDate,
+                                  time: 'Anytime',
+                                  purpose: purpose,
+                                  status: visitor.status,
+                                  statusColor: _getStatusColor(visitor.status),
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                );
+              }
+              return const SizedBox.shrink();
+            },
           ),
         ),
       ),
@@ -89,7 +181,15 @@ class VisitorPage extends StatelessWidget {
     );
   }
 
-  Widget _buildVisitorCard({required String name, required String id, required String date, required String time, required String purpose, required String status, required Color statusColor}) {
+  Widget _buildVisitorCard({
+    required String name,
+    required String id,
+    required String date,
+    required String time,
+    required String purpose,
+    required String status,
+    required Color statusColor,
+  }) {
     return GlassCard(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(20),
@@ -116,7 +216,7 @@ class VisitorPage extends StatelessWidget {
                   children: [
                     Text(name, style: const TextStyle(color: AppColors.text, fontSize: 16, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 4),
-                    Text(id, style: const TextStyle(color: AppColors.muted, fontSize: 13)),
+                    Text('NIC: $id', style: const TextStyle(color: AppColors.muted, fontSize: 13)),
                   ],
                 ),
               ),
@@ -148,52 +248,130 @@ class VisitorPage extends StatelessWidget {
   }
 }
 
-class AddVisitorPage extends StatelessWidget {
+class AddVisitorPage extends StatefulWidget {
   const AddVisitorPage({super.key});
 
   @override
+  State<AddVisitorPage> createState() => _AddVisitorPageState();
+}
+
+class _AddVisitorPageState extends State<AddVisitorPage> {
+  final _nameController = TextEditingController();
+  final _nicController = TextEditingController();
+  String _selectedPurpose = 'Personal Visit';
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _nicController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.bg,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(icon: const Icon(Icons.arrow_back, color: AppColors.text), onPressed: () => Navigator.pop(context)),
-        title: const Text('Add New Visitor'),
+    return BlocProvider(
+      create: (_) => VisitorBloc(
+        getVisitorsUseCase: ServiceLocator.instance.getVisitorsUseCase,
+        requestVisitorUseCase: ServiceLocator.instance.requestVisitorUseCase,
       ),
-      body: GlassBackground(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Visitor details', style: TextStyle(color: AppColors.muted, fontSize: 14)),
-              const SizedBox(height: 24),
-              _buildLabel('Visitor Full Name'),
-              _buildTextField('Enter guest name'),
-              const SizedBox(height: 24),
-              _buildLabel('NIC'),
-              _buildTextField('Enter guest identification number'),
-              const SizedBox(height: 24),
-              _buildLabel('Visit Purpose'),
-              _buildDropdownField(),
-              const SizedBox(height: 32),
-              GlassButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-                color: AppColors.primary,
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+      child: Scaffold(
+        backgroundColor: AppColors.bg,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: AppColors.text),
+            onPressed: () => Navigator.pop(context),
+          ),
+          title: const Text('Add New Visitor'),
+        ),
+        body: GlassBackground(
+          child: BlocConsumer<VisitorBloc, VisitorState>(
+            listener: (context, state) {
+              if (state is VisitorSubmitSuccess) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Visitor pass requested successfully!')),
+                );
+                Navigator.pop(context, true);
+              } else if (state is VisitorFailure) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Failed to submit visitor request: ${state.message}')),
+                );
+              }
+            },
+            builder: (context, state) {
+              final isLoading = state is VisitorLoading;
+
+              return SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Submit details', style: TextStyle(color: AppColors.text, fontSize: 16, fontWeight: FontWeight.bold)),
-                    SizedBox(width: 8),
-                    Icon(Icons.check_circle_outline, size: 18),
+                    const Text('Visitor details', style: TextStyle(color: AppColors.muted, fontSize: 14)),
+                    const SizedBox(height: 24),
+                    _buildLabel('Visitor Full Name'),
+                    _buildTextField(_nameController, 'Enter guest name', enabled: !isLoading),
+                    const SizedBox(height: 24),
+                    _buildLabel('NIC'),
+                    _buildTextField(_nicController, 'Enter guest identification number', enabled: !isLoading),
+                    const SizedBox(height: 24),
+                    _buildLabel('Visit Purpose'),
+                    _buildDropdownField(enabled: !isLoading),
+                    const SizedBox(height: 32),
+                    if (isLoading)
+                      const Center(
+                        child: CircularProgressIndicator(color: AppColors.cyan),
+                      )
+                    else
+                      GlassButton(
+                        onPressed: () {
+                          final name = _nameController.text.trim();
+                          final nic = _nicController.text.trim();
+
+                          if (name.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Please enter visitor name')),
+                            );
+                            return;
+                          }
+                          if (nic.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Please enter NIC')),
+                            );
+                            return;
+                          }
+
+                          // Format the relation parameter with NIC & Purpose
+                          final relation = 'NIC: $nic | Purpose: $_selectedPurpose';
+                          
+                          // Format today's date as YYYY-MM-DD
+                          final now = DateTime.now();
+                          final expectedDate = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+
+                          context.read<VisitorBloc>().add(
+                                SubmitVisitorRequest(
+                                  studentId: '230001A', // Map to student Id
+                                  visitorName: name,
+                                  relation: relation,
+                                  expectedDate: expectedDate,
+                                ),
+                              );
+                        },
+                        color: AppColors.primary,
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text('Submit details', style: TextStyle(color: AppColors.text, fontSize: 16, fontWeight: FontWeight.bold)),
+                            SizedBox(width: 8),
+                            Icon(Icons.check_circle_outline, size: 18),
+                          ],
+                        ),
+                      ),
+                    const SizedBox(height: 20),
                   ],
                 ),
-              ),
-              const SizedBox(height: 20),
-            ],
+              );
+            },
           ),
         ),
       ),
@@ -207,12 +385,14 @@ class AddVisitorPage extends StatelessWidget {
     );
   }
 
-  Widget _buildTextField(String hint) {
+  Widget _buildTextField(TextEditingController controller, String hint, {required bool enabled}) {
     return GlassCard(
       borderRadius: BorderRadius.circular(16),
       color: AppColors.surfaceElevated.withValues(alpha: 0.4),
       borderColor: AppColors.primary.withValues(alpha: 0.2),
       child: TextField(
+        controller: controller,
+        enabled: enabled,
         style: const TextStyle(color: AppColors.text),
         decoration: InputDecoration(
           hintText: hint,
@@ -224,13 +404,14 @@ class AddVisitorPage extends StatelessWidget {
     );
   }
 
-  Widget _buildDropdownField() {
+  Widget _buildDropdownField({required bool enabled}) {
     return GlassCard(
       borderRadius: BorderRadius.circular(16),
       color: AppColors.surfaceElevated.withValues(alpha: 0.4),
       borderColor: AppColors.primary.withValues(alpha: 0.2),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
       child: DropdownButtonFormField<String>(
+        initialValue: _selectedPurpose,
         dropdownColor: AppColors.surfaceElevated,
         decoration: const InputDecoration(border: InputBorder.none),
         hint: const Text('Select purpose', style: TextStyle(color: AppColors.muted)),
@@ -239,7 +420,15 @@ class AddVisitorPage extends StatelessWidget {
         items: ['Personal Visit', 'Family Visit', 'Academic Connection']
             .map((value) => DropdownMenuItem<String>(value: value, child: Text(value)))
             .toList(),
-        onChanged: (value) {},
+        onChanged: enabled
+            ? (value) {
+                if (value != null) {
+                  setState(() {
+                    _selectedPurpose = value;
+                  });
+                }
+              }
+            : null,
       ),
     );
   }
