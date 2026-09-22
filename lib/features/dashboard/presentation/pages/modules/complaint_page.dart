@@ -139,7 +139,7 @@ class ComplaintView extends StatelessWidget {
                         itemBuilder: (context, index) {
                           final incident = incidents[index];
                           return _buildComplaintCard(
-                            title: incident.description,
+                            title: incident.title.isNotEmpty ? incident.title : incident.description,
                             status: incident.status,
                             badgeColor: _getStatusColor(incident.status),
                             note: _formatDate(incident.createdAt),

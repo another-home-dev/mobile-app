@@ -312,8 +312,8 @@ class _AddVisitorPageState extends State<AddVisitorPage> {
                     _buildLabel('Visitor Full Name'),
                     _buildTextField(_nameController, 'Enter guest name', enabled: !isLoading),
                     const SizedBox(height: 24),
-                    _buildLabel('NIC'),
-                    _buildTextField(_nicController, 'Enter guest identification number', enabled: !isLoading),
+                    _buildLabel('Contact Number'),
+                    _buildTextField(_nicController, 'Enter guest contact number', enabled: !isLoading),
                     const SizedBox(height: 24),
                     _buildLabel('Visit Purpose'),
                     _buildDropdownField(enabled: !isLoading),
@@ -326,7 +326,7 @@ class _AddVisitorPageState extends State<AddVisitorPage> {
                       GlassButton(
                         onPressed: () {
                           final name = _nameController.text.trim();
-                          final nic = _nicController.text.trim();
+                          final contact = _nicController.text.trim();
 
                           if (name.isEmpty) {
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -334,26 +334,25 @@ class _AddVisitorPageState extends State<AddVisitorPage> {
                             );
                             return;
                           }
-                          if (nic.isEmpty) {
+                          if (contact.isEmpty) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Please enter NIC')),
+                              const SnackBar(content: Text('Please enter a contact number')),
                             );
                             return;
                           }
 
-                          // Format the relation parameter with NIC & Purpose
-                          final relation = 'NIC: $nic | Purpose: $_selectedPurpose';
-                          
                           // Format today's date as YYYY-MM-DD
                           final now = DateTime.now();
-                          final expectedDate = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+                          final visitDate = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
 
                           context.read<VisitorBloc>().add(
                                 SubmitVisitorRequest(
-                                  studentId: '230001A', // Map to student Id
+                                  roomId: '1-A', // Linked to user's room
                                   visitorName: name,
-                                  relation: relation,
-                                  expectedDate: expectedDate,
+                                  visitorContact: contact,
+                                  purpose: _selectedPurpose,
+                                  visitDate: visitDate,
+                                  visitTime: 'Anytime',
                                 ),
                               );
                         },

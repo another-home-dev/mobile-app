@@ -10,11 +10,13 @@ class LoadComplaints extends ComplaintEvent {
 
 class SubmitComplaint extends ComplaintEvent {
   final IncidentCategory category;
+  final String title;
   final String description;
   final String roomId;
 
   const SubmitComplaint({
     required this.category,
+    required this.title,
     required this.description,
     required this.roomId,
   });

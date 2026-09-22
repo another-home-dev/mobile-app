@@ -135,11 +135,11 @@ class _NewComplaintPageState extends State<NewComplaintPage> {
                             );
                             return;
                           }
-                          final descriptionText = desc.isEmpty ? title : '$title - $desc';
                           context.read<ComplaintBloc>().add(
                                 SubmitComplaint(
                                   category: _selectedCategory,
-                                  description: descriptionText,
+                                  title: title,
+                                  description: desc.isEmpty ? title : desc,
                                   roomId: '1-A', // Linked to user's room
                                 ),
                               );

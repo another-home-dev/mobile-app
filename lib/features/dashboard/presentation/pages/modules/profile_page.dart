@@ -7,11 +7,36 @@ import 'package:another_home/core/theme/glass_button.dart';
 import 'package:another_home/features/auth/domain/entities/user.dart';
 import 'package:another_home/features/auth/presentation/pages/login_page.dart';
 import 'package:another_home/core/di/service_locator.dart';
+import 'package:another_home/core/network/dtos/accommodation_models.dart';
+import 'package:another_home/core/network/api_exceptions.dart';
 
-class ProfilePage extends StatelessWidget {
+class ProfilePage extends StatefulWidget {
   final User user;
 
   const ProfilePage({super.key, required this.user});
+
+  @override
+  State<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+  late final Future<StudentModel?> _studentFuture;
+
+  User get user => widget.user;
+
+  @override
+  void initState() {
+    super.initState();
+    _studentFuture = _loadStudent();
+  }
+
+  Future<StudentModel?> _loadStudent() async {
+    try {
+      return await ServiceLocator.instance.accommodationApiService.getCurrentStudent();
+    } on NotFoundException {
+      return null;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -99,40 +124,46 @@ class ProfilePage extends StatelessWidget {
               const SizedBox(height: 20),
 
               // Academic Information Card
-              _buildSectionHeader('ACADEMIC & HOSTEL DETAILS'),
-              const SizedBox(height: 10),
-              GlassCard(
-                padding: const EdgeInsets.all(20),
-                borderRadius: BorderRadius.circular(24),
-                color: AppColors.surfaceElevated.withValues(alpha: 0.45),
-                borderColor: AppColors.text.withValues(alpha: 0.08),
-                child: Column(
-                  children: [
-                    _buildInfoRow(Icons.badge_outlined, 'Index number', user.id.isNotEmpty ? user.id : '230001A'),
-                    _buildInfoRow(Icons.school_outlined, 'Faculty', 'Computer science'),
-                    _buildInfoRow(Icons.menu_book_outlined, 'Degree Program', 'BSc (Hons) Computer Science'),
-                    _buildInfoRow(Icons.calendar_today_outlined, 'Academic Year', '5th Semester'),
-                    _buildInfoRow(Icons.key_outlined, 'Allocation Date', '01 March 2024'),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // Contact & Emergency Card
-              _buildSectionHeader('CONTACT & EMERGENCY'),
-              const SizedBox(height: 10),
-              GlassCard(
-                padding: const EdgeInsets.all(20),
-                borderRadius: BorderRadius.circular(24),
-                color: AppColors.surfaceElevated.withValues(alpha: 0.45),
-                borderColor: AppColors.text.withValues(alpha: 0.08),
-                child: Column(
-                  children: [
-                    _buildInfoRow(Icons.phone_outlined, 'Mobile Number', '+60 12-345 6789'),
-                    _buildInfoRow(Icons.contact_phone_outlined, 'Emergency Contact', '+60 16-987 6543 (Parent)'),
-                    _buildInfoRow(Icons.credit_card_outlined, 'National NIC', '9876543210V'),
-                  ],
-                ),
+              FutureBuilder<StudentModel?>(
+                future: _studentFuture,
+                builder: (context, snapshot) {
+                  final student = snapshot.data;
+                  return Column(
+                    children: [
+                      _buildSectionHeader('ACADEMIC & HOSTEL DETAILS'),
+                      const SizedBox(height: 10),
+                      GlassCard(
+                        padding: const EdgeInsets.all(20),
+                        borderRadius: BorderRadius.circular(24),
+                        color: AppColors.surfaceElevated.withValues(alpha: 0.45),
+                        borderColor: AppColors.text.withValues(alpha: 0.08),
+                        child: Column(
+                          children: [
+                            _buildInfoRow(Icons.badge_outlined, 'Student ID', student?.studentCode ?? 'Not registered yet'),
+                            _buildInfoRow(Icons.school_outlined, 'Faculty', student?.faculty ?? 'Not set'),
+                            _buildInfoRow(Icons.menu_book_outlined, 'Degree Program', student?.degreeProgram ?? 'Not set'),
+                            _buildInfoRow(Icons.calendar_today_outlined, 'Academic Year', student?.academicYear ?? 'Not set'),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      _buildSectionHeader('CONTACT'),
+                      const SizedBox(height: 10),
+                      GlassCard(
+                        padding: const EdgeInsets.all(20),
+                        borderRadius: BorderRadius.circular(24),
+                        color: AppColors.surfaceElevated.withValues(alpha: 0.45),
+                        borderColor: AppColors.text.withValues(alpha: 0.08),
+                        child: Column(
+                          children: [
+                            _buildInfoRow(Icons.phone_outlined, 'Mobile Number', student?.contact ?? 'Not available'),
+                            _buildInfoRow(Icons.credit_card_outlined, 'National NIC', student?.nic ?? 'Not set'),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
               const SizedBox(height: 20),
 

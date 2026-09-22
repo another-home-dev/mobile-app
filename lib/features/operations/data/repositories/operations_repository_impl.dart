@@ -15,11 +15,13 @@ class OperationsRepositoryImpl implements OperationsRepository {
   @override
   Future<IncidentModel> reportIncident({
     required IncidentCategory category,
+    required String title,
     required String description,
     required String roomId,
   }) {
     final dto = ReportIncidentDto(
       category: category,
+      title: title,
       description: description,
       roomId: roomId,
     );
@@ -33,17 +35,26 @@ class OperationsRepositoryImpl implements OperationsRepository {
 
   @override
   Future<VisitorRequestModel> requestVisitor({
-    required String studentId,
+    required String roomId,
     required String visitorName,
-    required String relation,
-    required String expectedDate,
+    required String visitorContact,
+    required String purpose,
+    required String visitDate,
+    required String visitTime,
   }) {
     final dto = RequestVisitorDto(
-      studentId: studentId,
+      roomId: roomId,
       visitorName: visitorName,
-      relation: relation,
-      expectedDate: expectedDate,
+      visitorContact: visitorContact,
+      purpose: purpose,
+      visitDate: visitDate,
+      visitTime: visitTime,
     );
     return _apiService.requestVisitor(dto);
+  }
+
+  @override
+  Future<List<NoticeModel>> getNotices() {
+    return _apiService.getNotices();
   }
 }

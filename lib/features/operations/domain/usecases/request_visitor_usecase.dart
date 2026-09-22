@@ -7,16 +7,20 @@ class RequestVisitorUseCase {
   RequestVisitorUseCase(this.repository);
 
   Future<VisitorRequestModel> call({
-    required String studentId,
+    required String roomId,
     required String visitorName,
-    required String relation,
-    required String expectedDate,
+    required String visitorContact,
+    required String purpose,
+    required String visitDate,
+    required String visitTime,
   }) {
     return repository.requestVisitor(
-      studentId: studentId,
+      roomId: roomId,
       visitorName: visitorName,
-      relation: relation,
-      expectedDate: expectedDate,
+      visitorContact: visitorContact,
+      purpose: purpose,
+      visitDate: visitDate,
+      visitTime: visitTime,
     );
   }
 }

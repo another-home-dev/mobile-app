@@ -1,20 +1,26 @@
 import '../api_client.dart';
 import '../dtos/auth_models.dart';
 import '../dtos/operations_models.dart';
+import '../../services/secure_storage_service.dart';
 
 class OperationsApiService {
   final ApiClient _apiClient;
+  final SecureStorageService _secureStorage;
 
-  OperationsApiService(this._apiClient);
+  OperationsApiService(this._apiClient, this._secureStorage);
 
   // --- Maintenance / Incidents ---
 
-  /// View all logged maintenance incidents
-  /// GET /operations/incidents
+  /// View this student's own logged maintenance incidents (backend paginates and
+  /// filters server-side by studentId; page 1 is enough for the mobile list)
+  /// GET /operations/maintenance?studentId={id}
   Future<List<IncidentModel>> getIncidents() async {
-    final response = await _apiClient.get('/operations/incidents');
-    if (response is List) {
-      return response
+    final studentId = await _secureStorage.getStudentId();
+    final query = studentId != null ? '?studentId=$studentId' : '';
+    final response = await _apiClient.get('/operations/maintenance$query');
+    final data = (response as Map<String, dynamic>)['data'];
+    if (data is List) {
+      return data
           .map((json) => IncidentModel.fromJson(json as Map<String, dynamic>))
           .toList();
     }
@@ -22,29 +28,33 @@ class OperationsApiService {
   }
 
   /// Report a new maintenance issue (Student app)
-  /// POST /operations/incidents
+  /// POST /operations/maintenance
   Future<IncidentModel> reportIncident(ReportIncidentDto reportIncidentDto) async {
     final response = await _apiClient.post(
-      '/operations/incidents',
+      '/operations/maintenance',
       body: reportIncidentDto.toJson(),
     );
     return IncidentModel.fromJson(response as Map<String, dynamic>);
   }
 
   /// Mark an incident as resolved (Warden view)
-  /// PATCH /operations/incidents/{incidentId}/resolve
+  /// PATCH /operations/maintenance/{incidentId}
   Future<void> resolveIncident(String incidentId) async {
-    await _apiClient.patch('/operations/incidents/$incidentId/resolve');
+    await _apiClient.patch(
+      '/operations/maintenance/$incidentId',
+      body: {'status': 'Resolved'},
+    );
   }
 
   // --- Visitors ---
 
-  /// View visitor logs and pending requests
+  /// View visitor logs and pending requests (backend paginates)
   /// GET /operations/visitors
   Future<List<VisitorRequestModel>> getVisitors() async {
     final response = await _apiClient.get('/operations/visitors');
-    if (response is List) {
-      return response
+    final data = (response as Map<String, dynamic>)['data'];
+    if (data is List) {
+      return data
           .map((json) => VisitorRequestModel.fromJson(json as Map<String, dynamic>))
           .toList();
     }
@@ -62,25 +72,26 @@ class OperationsApiService {
   }
 
   /// Approve or reject a visitor entry (Warden view)
-  /// PATCH /operations/visitors/{visitorId}/status
+  /// PATCH /operations/visitors/{visitorId}
   Future<void> updateVisitorStatus(
     String visitorId,
     ApprovalDto approvalDto,
   ) async {
     await _apiClient.patch(
-      '/operations/visitors/$visitorId/status',
+      '/operations/visitors/$visitorId',
       body: approvalDto.toJson(),
     );
   }
 
   // --- Notices ---
 
-  /// Get all published notices and announcements
+  /// Get all published notices and announcements (backend paginates; page 1 is enough for the mobile list)
   /// GET /operations/notices
   Future<List<NoticeModel>> getNotices() async {
     final response = await _apiClient.get('/operations/notices');
-    if (response is List) {
-      return response
+    final data = (response as Map<String, dynamic>)['data'];
+    if (data is List) {
+      return data
           .map((json) => NoticeModel.fromJson(json as Map<String, dynamic>))
           .toList();
     }

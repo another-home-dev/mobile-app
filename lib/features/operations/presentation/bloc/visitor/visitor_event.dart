@@ -7,15 +7,19 @@ class LoadVisitors extends VisitorEvent {
 }
 
 class SubmitVisitorRequest extends VisitorEvent {
-  final String studentId;
+  final String roomId;
   final String visitorName;
-  final String relation;
-  final String expectedDate;
+  final String visitorContact;
+  final String purpose;
+  final String visitDate;
+  final String visitTime;
 
   const SubmitVisitorRequest({
-    required this.studentId,
+    required this.roomId,
     required this.visitorName,
-    required this.relation,
-    required this.expectedDate,
+    required this.visitorContact,
+    required this.purpose,
+    required this.visitDate,
+    required this.visitTime,
   });
 }

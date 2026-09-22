@@ -37,6 +37,7 @@ class ComplaintBloc extends Bloc<ComplaintEvent, ComplaintState> {
     try {
       final incident = await reportIncidentUseCase(
         category: event.category,
+        title: event.title,
         description: event.description,
         roomId: event.roomId,
       );
