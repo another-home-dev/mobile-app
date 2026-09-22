@@ -1,4 +1,3 @@
-import '../../../../core/network/dtos/auth_models.dart';
 import '../../../../core/network/services/auth_api_service.dart';
 import '../../domain/entities/user.dart';
 import '../../domain/repositories/auth_repository.dart';
@@ -9,18 +8,19 @@ class AuthRepositoryImpl implements AuthRepository {
   AuthRepositoryImpl(this._authApiService);
 
   @override
-  Future<User> login({required String email, required String password}) async {
-    if (email.trim().isEmpty || password.trim().isEmpty) {
-      throw Exception('Email and password cannot be empty');
-    }
+  Future<User> login() async {
+    final response = await _authApiService.login();
 
-    final loginDto = LoginDto(email: email.trim(), password: password);
-    final response = await _authApiService.login(loginDto);
+    if (response.role != 'student') {
+      await _authApiService.logout();
+      throw Exception('This app is for students only. Please use the web admin console instead.');
+    }
 
     return User(
       id: response.userId,
       name: response.name,
       email: response.email,
+      role: response.role,
     );
   }
 }

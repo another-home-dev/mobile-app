@@ -8,8 +8,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 class FakeAuthRepository implements AuthRepository {
   @override
-  Future<User> login({required String email, required String password}) async {
-    return User(id: '1', name: 'Amal', email: email);
+  Future<User> login() async {
+    return const User(id: '1', name: 'Amal', email: 'student@mail.com', role: 'student');
   }
 }
 
@@ -21,7 +21,7 @@ void main() {
 
       final subscription = bloc.stream.listen(states.add);
 
-      bloc.add(const LoginSubmitted(email: 'student@mail.com', password: '123456'));
+      bloc.add(const LoginSubmitted());
       await Future<void>.delayed(const Duration(milliseconds: 300));
 
       expect(states.first, isA<LoginLoading>());

@@ -1,10 +1,15 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:flutter_appauth/flutter_appauth.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class SecureStorageService {
+  static const _tenant = 'hiru616';
+  static const _issuer = 'https://api.asgardeo.io/t/$_tenant/oauth2/token';
+  static const _clientId = 'wv849SSjYflfi04zRyv5W4ikiMwa';
+  static const _redirectUrl = 'com.example.another_home://callback';
+
   final FlutterSecureStorage _storage;
+  final FlutterAppAuth _appAuth = const FlutterAppAuth();
 
   SecureStorageService({FlutterSecureStorage? storage})
       : _storage = storage ?? const FlutterSecureStorage();
@@ -40,27 +45,25 @@ class SecureStorageService {
     if (JwtDecoder.isExpired(accessToken)) {
       if (refreshToken != null && !JwtDecoder.isExpired(refreshToken)) {
         try {
-          final response = await http.post(
-            Uri.parse('https://api.asgardeo.io/t/hiru616/oauth2/token'),
-            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body: {
-              'grant_type': 'refresh_token',
-              'refresh_token': refreshToken,
-              'client_id': 'wv849SSjYflfi04zRyv5W4ikiMwa',
-            },
+          final response = await _appAuth.token(
+            TokenRequest(
+              _clientId,
+              _redirectUrl,
+              issuer: _issuer,
+              refreshToken: refreshToken,
+              grantType: 'refresh_token',
+            ),
           );
 
-          if (response.statusCode == 200) {
-            final data = jsonDecode(response.body) as Map<String, dynamic>;
-            accessToken = data['access_token'] as String;
-            
-            // Update local storage with new tokens
-            await _storage.write(key: 'access_token', value: accessToken);
-            if (data.containsKey('refresh_token')) {
-              await _storage.write(key: 'refresh_token', value: data['refresh_token'] as String);
+          final newAccessToken = response.accessToken;
+          if (newAccessToken != null) {
+            accessToken = newAccessToken;
+            await _storage.write(key: 'access_token', value: newAccessToken);
+            if (response.refreshToken != null) {
+              await _storage.write(key: 'refresh_token', value: response.refreshToken!);
             }
-            if (data.containsKey('id_token')) {
-              await _storage.write(key: 'id_token', value: data['id_token'] as String);
+            if (response.idToken != null) {
+              await _storage.write(key: 'id_token', value: response.idToken!);
             }
             return accessToken;
           }

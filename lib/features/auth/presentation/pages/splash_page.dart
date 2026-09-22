@@ -47,11 +47,13 @@ class _SplashPageState extends State<SplashPage> {
           final String userId;
           final String email;
           final String name;
+          final String? role;
 
           if (liveProfile != null) {
             userId = liveProfile['sub'] as String? ?? 'unknown';
             email = liveProfile['email'] as String? ?? '';
             name = liveProfile['name'] as String? ?? liveProfile['given_name'] as String? ?? email.split('@').first;
+            role = _extractRole(liveProfile['roles']);
           } else {
             // Fallback: decode claims from OIDC id_token if UserInfo endpoint is unreachable
             final decoded = JwtDecoder.decode(idToken);
@@ -69,27 +71,48 @@ class _SplashPageState extends State<SplashPage> {
               }
             }
             name = tempName;
+            role = _extractRole(decoded['roles']);
           }
 
-          final user = User(
-            id: userId,
-            name: name,
-            email: email,
-          );
+          // This app is for students only — a warden/super-admin token (or one with
+          // no role claim at all) should never land on the student dashboard.
+          if (role != 'student') {
+            await secureStorage.clearAll();
+          } else {
+            final user = User(
+              id: userId,
+              name: name,
+              email: email,
+              role: role,
+            );
 
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => DashboardPage(user: user)),
-          );
-          return;
+            if (!mounted) return;
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (_) => DashboardPage(user: user)),
+            );
+            return;
+          }
         }
       }
     } catch (_) {
       // In case of error (e.g. storage corrupted), default to login
     }
 
+    if (!mounted) return;
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => const LoginPage()),
     );
+  }
+
+  String? _extractRole(dynamic roles) {
+    final roleList = roles is List ? roles : (roles == null ? <dynamic>[] : [roles]);
+    for (final raw in roleList) {
+      final normalized = raw.toString().split('/').last.trim().toLowerCase();
+      if (normalized.isNotEmpty && normalized != 'everyone') {
+        return normalized;
+      }
+    }
+    return null;
   }
 
   @override

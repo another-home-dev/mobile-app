@@ -10,25 +10,9 @@ import '../../../dashboard/presentation/pages/dashboard_page.dart';
 import '../bloc/login_bloc.dart';
 import '../bloc/login_event.dart';
 import '../bloc/login_state.dart';
-import 'register_page.dart';
 
-class LoginPage extends StatefulWidget {
+class LoginPage extends StatelessWidget {
   const LoginPage({super.key});
-
-  @override
-  State<LoginPage> createState() => _LoginPageState();
-}
-
-class _LoginPageState extends State<LoginPage> {
-  final _emailController = TextEditingController(text: 'p12345@siswa.um.edu.my');
-  final _passwordController = TextEditingController(text: 'password123');
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -55,13 +39,19 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     const SizedBox(height: 6),
                     const Text(
-                      'Welcome Back',
+                      'Welcome',
                       style: TextStyle(
                         color: AppColors.text,
                         fontSize: 32,
                         fontFamily: 'serif',
                         fontWeight: FontWeight.w500,
                       ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Sign in with your student account, or create one if this is your first time.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: AppColors.muted.withValues(alpha: 0.9), fontSize: 14),
                     ),
                     const SizedBox(height: 32),
                     BlocListener<LoginBloc, LoginState>(
@@ -78,31 +68,16 @@ class _LoginPageState extends State<LoginPage> {
                         color: AppColors.surface.withValues(alpha: 0.55),
                         borderColor: AppColors.text.withValues(alpha: 0.12),
                         child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            _buildLabel('UOM-MAIL'),
-                            _buildTextField(
-                              controller: _emailController,
-                              icon: Icons.mail_outline,
-                              hintText: 'p12345@siswa.um.edu.my',
-                            ),
-                            const SizedBox(height: 20),
-                            _buildLabel('PASSWORD'),
-                            _buildTextField(
-                              controller: _passwordController,
-                              icon: Icons.lock_outline,
-                              hintText: 'Enter your password',
-                              suffixIcon: Icons.visibility_off_outlined,
-                              obscureText: true,
-                            ),
-                            const SizedBox(height: 24),
                             BlocBuilder<LoginBloc, LoginState>(
                               builder: (context, state) {
                                 if (state is LoginFailure) {
                                   return Padding(
-                                    padding: const EdgeInsets.only(bottom: 12),
+                                    padding: const EdgeInsets.only(bottom: 16),
                                     child: Text(
                                       state.message,
+                                      textAlign: TextAlign.center,
                                       style: const TextStyle(color: AppColors.red),
                                     ),
                                   );
@@ -114,12 +89,8 @@ class _LoginPageState extends State<LoginPage> {
                               builder: (context, state) {
                                 return GlassButton(
                                   onPressed: () {
-                                    context.read<LoginBloc>().add(
-                                      LoginSubmitted(
-                                        email: _emailController.text,
-                                        password: _passwordController.text,
-                                      ),
-                                    );
+                                    if (state is LoginLoading) return;
+                                    context.read<LoginBloc>().add(const LoginSubmitted());
                                   },
                                   color: AppColors.primary,
                                   child: state is LoginLoading
@@ -134,15 +105,15 @@ class _LoginPageState extends State<LoginPage> {
                                       : const Row(
                                           mainAxisAlignment: MainAxisAlignment.center,
                                           children: [
+                                            Icon(Icons.login_rounded, size: 18),
+                                            SizedBox(width: 8),
                                             Text(
-                                              'Log In',
+                                              'Continue with Asgardeo',
                                               style: TextStyle(
-                                                fontSize: 16,
+                                                fontSize: 15,
                                                 fontWeight: FontWeight.bold,
                                               ),
                                             ),
-                                            SizedBox(width: 8),
-                                            Icon(Icons.login_rounded, size: 18),
                                           ],
                                         ),
                                 );
@@ -152,81 +123,11 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 24),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const RegisterPage()),
-                        );
-                      },
-                      child: const Text(
-                        "Don't have an account? Sign Up",
-                        style: TextStyle(
-                          color: AppColors.muted,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ),
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLabel(String labelText) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 4, bottom: 8),
-      child: Text(
-        labelText,
-        style: const TextStyle(
-          color: AppColors.muted,
-          fontSize: 11,
-          fontWeight: FontWeight.bold,
-          letterSpacing: 1,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required IconData icon,
-    required String hintText,
-    IconData? suffixIcon,
-    bool obscureText = false,
-  }) {
-    return GlassCard(
-      borderRadius: BorderRadius.circular(16),
-      color: AppColors.surfaceElevated.withValues(alpha: 0.4),
-      borderColor: AppColors.text.withValues(alpha: 0.1),
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: SizedBox(
-        height: 54,
-        child: Row(
-          children: [
-            Icon(icon, color: AppColors.cyan, size: 20),
-            const SizedBox(width: 12),
-            Expanded(
-              child: TextField(
-                controller: controller,
-                obscureText: obscureText,
-                style: const TextStyle(color: AppColors.text, fontSize: 14),
-                decoration: InputDecoration(
-                  hintText: hintText,
-                  hintStyle: const TextStyle(color: AppColors.muted),
-                  border: InputBorder.none,
-                ),
-              ),
-            ),
-            if (suffixIcon != null) ...[
-              Icon(suffixIcon, color: AppColors.muted, size: 20),
-            ],
-          ],
         ),
       ),
     );
