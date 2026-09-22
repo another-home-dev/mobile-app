@@ -3,18 +3,6 @@ enum ApprovalStatus {
   rejected,
 }
 
-class LoginDto {
-  final String email;
-  final String password;
-
-  const LoginDto({required this.email, required this.password});
-
-  Map<String, dynamic> toJson() => {
-        'email': email,
-        'password': password,
-      };
-}
-
 class RegisterStudentDto {
   final String studentId;
   final String fullName;
@@ -87,12 +75,14 @@ class AuthResponseModel {
   final String userId;
   final String email;
   final String name;
+  final String? role;
 
   const AuthResponseModel({
     required this.token,
     required this.userId,
     required this.email,
     required this.name,
+    this.role,
   });
 
   factory AuthResponseModel.fromJson(Map<String, dynamic> json) =>
@@ -101,5 +91,6 @@ class AuthResponseModel {
         userId: json['userId'] as String,
         email: json['email'] as String,
         name: json['name'] as String,
+        role: json['role'] as String?,
       );
 }

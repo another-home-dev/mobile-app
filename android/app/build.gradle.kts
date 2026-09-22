@@ -23,6 +23,9 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        // Redirect URI scheme for the Asgardeo Authorization Code + PKCE flow (flutter_appauth).
+        manifestPlaceholders["appAuthRedirectScheme"] = "com.example.another_home"
     }
 
     buildTypes {
