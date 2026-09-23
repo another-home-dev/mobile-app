@@ -22,7 +22,9 @@ class AuthRepositoryImpl implements AuthRepository {
 
     if (response.role != 'student') {
       await _authApiService.logout();
-      throw Exception('This app is for students only. Please use the web admin console instead.');
+      throw Exception(response.role == null
+          ? 'Signed in, but no role was received for this account. Please contact the hostel office.'
+          : 'This app is for students only. Please use the web admin console instead.');
     }
 
     // Best-effort: link this Asgardeo account to its backend Student record so

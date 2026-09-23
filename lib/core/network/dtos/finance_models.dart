@@ -1,3 +1,5 @@
+import '../../utils/json_utils.dart';
+
 class SubmitPaymentDto {
   final String invoiceId;
   final double amount;
@@ -40,7 +42,7 @@ class InvoiceModel {
   factory InvoiceModel.fromJson(Map<String, dynamic> json) => InvoiceModel(
         invoiceId: json['invoiceId'] as String,
         studentId: json['studentId'] as String,
-        amount: (json['amount'] as num).toDouble(),
+        amount: parseJsonDouble(json['amount']),
         dueDate: json['dueDate'] as String,
         status: json['status'] as String,
         description: json['description'] as String,

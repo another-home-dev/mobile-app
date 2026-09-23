@@ -16,6 +16,15 @@ class AccommodationApiService {
     return StudentModel.fromJson(data as Map<String, dynamic>);
   }
 
+  /// Update the logged-in student's own profile. Only the keys present in
+  /// [changes] are updated; an empty string clears an optional field.
+  /// PATCH /accommodation/students/me
+  Future<StudentModel> updateCurrentStudent(Map<String, String> changes) async {
+    final response = await _apiClient.patch('/accommodation/students/me', body: changes);
+    final data = (response as Map<String, dynamic>)['data'];
+    return StudentModel.fromJson(data as Map<String, dynamic>);
+  }
+
   /// Get all rooms and their current capacity
   /// GET /accommodation/rooms
   Future<List<RoomModel>> getRooms() async {

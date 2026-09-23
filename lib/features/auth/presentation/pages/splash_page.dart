@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:another_home/core/utils/role_utils.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:another_home/core/di/service_locator.dart';
+import 'package:another_home/core/services/secure_storage_service.dart';
 import 'package:another_home/core/theme/app_colors.dart';
 import 'package:another_home/core/theme/glass_background.dart';
 import 'package:another_home/features/auth/domain/entities/user.dart';
@@ -34,8 +36,7 @@ class _SplashPageState extends State<SplashPage> {
       final idToken = await secureStorage.getIdToken();
 
       if (accessToken != null && idToken != null) {
-        // Check if access_token is expired using JwtDecoder
-        final isExpired = JwtDecoder.isExpired(accessToken);
+        final isExpired = SecureStorageService.isTokenExpired(accessToken);
 
         if (!isExpired) {
           // Attach token to ApiClient
@@ -53,7 +54,7 @@ class _SplashPageState extends State<SplashPage> {
             userId = liveProfile['sub'] as String? ?? 'unknown';
             email = liveProfile['email'] as String? ?? '';
             name = liveProfile['name'] as String? ?? liveProfile['given_name'] as String? ?? email.split('@').first;
-            role = _extractRole(liveProfile['roles']);
+            role = resolveAppRole(liveProfile['roles']);
           } else {
             // Fallback: decode claims from OIDC id_token if UserInfo endpoint is unreachable
             final decoded = JwtDecoder.decode(idToken);
@@ -71,7 +72,7 @@ class _SplashPageState extends State<SplashPage> {
               }
             }
             name = tempName;
-            role = _extractRole(decoded['roles']);
+            role = resolveAppRole(decoded['roles']);
           }
 
           // This app is for students only — a warden/super-admin token (or one with
@@ -102,17 +103,6 @@ class _SplashPageState extends State<SplashPage> {
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => const LoginPage()),
     );
-  }
-
-  String? _extractRole(dynamic roles) {
-    final roleList = roles is List ? roles : (roles == null ? <dynamic>[] : [roles]);
-    for (final raw in roleList) {
-      final normalized = raw.toString().split('/').last.trim().toLowerCase();
-      if (normalized.isNotEmpty && normalized != 'everyone') {
-        return normalized;
-      }
-    }
-    return null;
   }
 
   @override

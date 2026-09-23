@@ -1,6 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../../main.dart';
@@ -22,13 +20,13 @@ class ApiClient {
         _client = client ?? http.Client(),
         _secureStorage = secureStorage;
 
-  /// Automatically resolves gateway URL based on target platform
-  static String _getDefaultBaseUrl() {
-    if (!kIsWeb && Platform.isAndroid) {
-      return 'http://10.0.2.2:3001/api/v1'; // Android Emulator -> Local Gateway
-    }
-    return 'http://localhost:3001/api/v1'; // iOS Simulator / Web / Desktop Gateway
-  }
+  /// The deployed gateway by default, so a release build works on a real phone.
+  /// For a local stack, build with e.g.
+  ///   --dart-define=API_BASE_URL=http://10.0.2.2:3001/api/v1   (Android emulator)
+  static String _getDefaultBaseUrl() => const String.fromEnvironment(
+        'API_BASE_URL',
+        defaultValue: 'https://34.54.94.62.nip.io/api/v1',
+      );
 
   /// Set the Asgardeo OIDC / JWT Token for gateway-authenticated requests
   void setToken(String? token) {

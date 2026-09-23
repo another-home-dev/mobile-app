@@ -1,3 +1,5 @@
+import '../../utils/json_utils.dart';
+
 enum RoomDesignation {
   male,
   female,
@@ -107,7 +109,7 @@ class RoomModel {
         gender: json['gender'] as String,
         isAvailable: json['isAvailable'] as bool? ?? true,
         airConditioning: json['airConditioning'] as String,
-        rentPerMonth: (json['rentPerMonth'] as num).toDouble(),
+        rentPerMonth: parseJsonDouble(json['rentPerMonth']),
         floor: json['floor'] as int,
         buildingId: json['buildingId'] as String?,
         occupiedBeds: json['occupiedBeds'] as int? ?? 0,
@@ -128,6 +130,11 @@ class StudentModel {
   final String? degreeProgram;
   final String? academicYear;
   final String? nic;
+  final String? guardianName;
+  final String? guardianContact;
+  final String? address;
+  final String? roomNumber;
+  final String? buildingName;
 
   const StudentModel({
     required this.id,
@@ -139,7 +146,20 @@ class StudentModel {
     this.degreeProgram,
     this.academicYear,
     this.nic,
+    this.guardianName,
+    this.guardianContact,
+    this.address,
+    this.roomNumber,
+    this.buildingName,
   });
+
+  bool get hasRoom => roomNumber != null;
+
+  /// e.g. "Room 101 • Block A", or a prompt while the warden hasn't assigned one.
+  String get roomLabel {
+    if (roomNumber == null) return 'No room assigned yet';
+    return buildingName == null ? 'Room $roomNumber' : 'Room $roomNumber • $buildingName';
+  }
 
   factory StudentModel.fromJson(Map<String, dynamic> json) => StudentModel(
         id: json['id'] as String,
@@ -151,6 +171,11 @@ class StudentModel {
         degreeProgram: json['degreeProgram'] as String?,
         academicYear: json['academicYear'] as String?,
         nic: json['nic'] as String?,
+        guardianName: json['guardianName'] as String?,
+        guardianContact: json['guardianContact'] as String?,
+        address: json['address'] as String?,
+        roomNumber: json['roomNumber'] as String?,
+        buildingName: json['buildingName'] as String?,
       );
 }
 

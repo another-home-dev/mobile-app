@@ -29,7 +29,7 @@
 		<dict>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>com.example.another_home</string>
+				<string>com.example.anotherhome</string>
 			</array>
 		</dict>
 	</array>

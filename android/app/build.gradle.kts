@@ -25,7 +25,8 @@ android {
         versionName = flutter.versionName
 
         // Redirect URI scheme for the Asgardeo Authorization Code + PKCE flow (flutter_appauth).
-        manifestPlaceholders["appAuthRedirectScheme"] = "com.example.another_home"
+        // No underscore allowed in a URI scheme - see _redirectUrl in auth_api_service.dart.
+        manifestPlaceholders["appAuthRedirectScheme"] = "com.example.anotherhome"
     }
 
     buildTypes {
