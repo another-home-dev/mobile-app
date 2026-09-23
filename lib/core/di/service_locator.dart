@@ -16,6 +16,7 @@ import 'package:another_home/features/operations/domain/usecases/get_incidents_u
 import 'package:another_home/features/operations/domain/usecases/report_incident_usecase.dart';
 import 'package:another_home/features/operations/domain/usecases/get_visitors_usecase.dart';
 import 'package:another_home/features/operations/domain/usecases/request_visitor_usecase.dart';
+import 'package:another_home/features/operations/domain/usecases/get_notices_usecase.dart';
 import 'package:another_home/core/services/secure_storage_service.dart';
 
 
@@ -37,14 +38,14 @@ class ServiceLocator {
   // API Services corresponding to Backend Microservices
   late final AuthApiService authApiService = AuthApiService(apiClient, secureStorageService);
   late final AccommodationApiService accommodationApiService = AccommodationApiService(apiClient);
-  late final OperationsApiService operationsApiService = OperationsApiService(apiClient);
+  late final OperationsApiService operationsApiService = OperationsApiService(apiClient, secureStorageService);
   late final FinanceApiService financeApiService = FinanceApiService(apiClient);
   late final NotificationsApiService notificationsApiService = NotificationsApiService(apiClient);
 
-  late final AuthRepository authRepository = AuthRepositoryImpl(authApiService);
+  late final AuthRepository authRepository = AuthRepositoryImpl(authApiService, accommodationApiService, secureStorageService);
   late final LoginUseCase loginUseCase = LoginUseCase(authRepository);
 
-  late final DashboardRepository dashboardRepository = DashboardRepositoryImpl();
+  late final DashboardRepository dashboardRepository = DashboardRepositoryImpl(financeApiService, operationsApiService, secureStorageService);
   late final GetDashboardSummaryUseCase dashboardSummaryUseCase =
       GetDashboardSummaryUseCase(dashboardRepository);
 
@@ -54,4 +55,5 @@ class ServiceLocator {
   late final ReportIncidentUseCase reportIncidentUseCase = ReportIncidentUseCase(operationsRepository);
   late final GetVisitorsUseCase getVisitorsUseCase = GetVisitorsUseCase(operationsRepository);
   late final RequestVisitorUseCase requestVisitorUseCase = RequestVisitorUseCase(operationsRepository);
+  late final GetNoticesUseCase getNoticesUseCase = GetNoticesUseCase(operationsRepository);
 }

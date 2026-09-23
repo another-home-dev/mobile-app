@@ -6,6 +6,16 @@ class AccommodationApiService {
 
   AccommodationApiService(this._apiClient);
 
+  /// Resolve the logged-in student's own record (links the Asgardeo account to a
+  /// Student by email on first call). Throws NotFoundException if the warden
+  /// hasn't registered this student yet.
+  /// GET /accommodation/students/me
+  Future<StudentModel> getCurrentStudent() async {
+    final response = await _apiClient.get('/accommodation/students/me');
+    final data = (response as Map<String, dynamic>)['data'];
+    return StudentModel.fromJson(data as Map<String, dynamic>);
+  }
+
   /// Get all rooms and their current capacity
   /// GET /accommodation/rooms
   Future<List<RoomModel>> getRooms() async {

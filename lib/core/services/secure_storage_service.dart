@@ -30,6 +30,12 @@ class SecureStorageService {
   Future<String?> getIdToken() => _storage.read(key: 'id_token');
   Future<String?> getRefreshToken() => _storage.read(key: 'refresh_token');
 
+  /// The backend Student.id resolved from the Asgardeo account on login —
+  /// see AccommodationApiService.getCurrentStudent(). Absent if the warden
+  /// hasn't registered this student yet.
+  Future<void> saveStudentId(String studentId) => _storage.write(key: 'student_id', value: studentId);
+  Future<String?> getStudentId() => _storage.read(key: 'student_id');
+
   Future<void> clearAll() => _storage.deleteAll();
 
   /// Retrieve a valid (and refreshed if needed) access token.

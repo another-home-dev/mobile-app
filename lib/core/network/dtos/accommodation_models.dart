@@ -117,6 +117,43 @@ class RoomModel {
       );
 }
 
+/// The current student's own record, resolved via GET /accommodation/students/me.
+class StudentModel {
+  final String id;
+  final String studentCode;
+  final String name;
+  final String email;
+  final String contact;
+  final String? faculty;
+  final String? degreeProgram;
+  final String? academicYear;
+  final String? nic;
+
+  const StudentModel({
+    required this.id,
+    required this.studentCode,
+    required this.name,
+    required this.email,
+    required this.contact,
+    this.faculty,
+    this.degreeProgram,
+    this.academicYear,
+    this.nic,
+  });
+
+  factory StudentModel.fromJson(Map<String, dynamic> json) => StudentModel(
+        id: json['id'] as String,
+        studentCode: json['studentCode'] as String,
+        name: json['name'] as String,
+        email: json['email'] as String,
+        contact: json['contact'] as String,
+        faculty: json['faculty'] as String?,
+        degreeProgram: json['degreeProgram'] as String?,
+        academicYear: json['academicYear'] as String?,
+        nic: json['nic'] as String?,
+      );
+}
+
 class BedAllocationModel {
   final String bedId;
   final String roomId;

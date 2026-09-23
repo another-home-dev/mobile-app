@@ -6,6 +6,7 @@ import 'package:another_home/core/theme/glass_badge.dart';
 
 import '../../../../core/di/service_locator.dart';
 import '../../../auth/domain/entities/user.dart';
+import '../../domain/entities/dashboard_summary.dart';
 import 'modules/my_room_page.dart';
 import 'modules/payment_page.dart';
 import 'modules/visitor_page.dart';
@@ -13,15 +14,28 @@ import 'modules/complaint_page.dart';
 import 'modules/notices_page.dart';
 import 'modules/profile_page.dart';
 
-class DashboardPage extends StatelessWidget {
+class DashboardPage extends StatefulWidget {
   final User user;
 
   const DashboardPage({super.key, required this.user});
 
   @override
-  Widget build(BuildContext context) {
-    final summary = ServiceLocator.instance.dashboardSummaryUseCase();
+  State<DashboardPage> createState() => _DashboardPageState();
+}
 
+class _DashboardPageState extends State<DashboardPage> {
+  late final Future<DashboardSummary> _summaryFuture;
+
+  User get user => widget.user;
+
+  @override
+  void initState() {
+    super.initState();
+    _summaryFuture = ServiceLocator.instance.dashboardSummaryUseCase();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bg,
       body: GlassBackground(
@@ -95,30 +109,37 @@ class DashboardPage extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 24),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildSummaryCard(
-                          icon: Icons.build_outlined,
-                          iconColor: AppColors.orange,
-                          title: 'Complaints',
-                          mainText: summary.complaintsCount.toString(),
-                          subText: '1 in progress',
-                          subTextColor: AppColors.orange,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildSummaryCard(
-                          icon: Icons.credit_card_outlined,
-                          iconColor: AppColors.red,
-                          title: 'Payment',
-                          mainText: summary.paymentStatus,
-                          subText: summary.pendingAmount,
-                          subTextColor: AppColors.red,
-                        ),
-                      ),
-                    ],
+                  FutureBuilder<DashboardSummary>(
+                    future: _summaryFuture,
+                    builder: (context, snapshot) {
+                      final summary = snapshot.data;
+                      final isLoading = snapshot.connectionState == ConnectionState.waiting;
+                      return Row(
+                        children: [
+                          Expanded(
+                            child: _buildSummaryCard(
+                              icon: Icons.build_outlined,
+                              iconColor: AppColors.orange,
+                              title: 'Complaints',
+                              mainText: isLoading ? '—' : (summary?.complaintsCount.toString() ?? '0'),
+                              subText: 'Filed by you',
+                              subTextColor: AppColors.orange,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildSummaryCard(
+                              icon: Icons.credit_card_outlined,
+                              iconColor: AppColors.red,
+                              title: 'Payment',
+                              mainText: isLoading ? '—' : (summary?.paymentStatus ?? 'N/A'),
+                              subText: isLoading ? '' : (summary?.pendingAmount ?? ''),
+                              subTextColor: AppColors.red,
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
                   const SizedBox(height: 28),
                   const Text('QUICK ACTIONS', style: TextStyle(color: AppColors.muted, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.2)),

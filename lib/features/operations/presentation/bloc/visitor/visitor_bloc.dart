@@ -36,10 +36,12 @@ class VisitorBloc extends Bloc<VisitorEvent, VisitorState> {
     emit(const VisitorLoading());
     try {
       final visitorRequest = await requestVisitorUseCase(
-        studentId: event.studentId,
+        roomId: event.roomId,
         visitorName: event.visitorName,
-        relation: event.relation,
-        expectedDate: event.expectedDate,
+        visitorContact: event.visitorContact,
+        purpose: event.purpose,
+        visitDate: event.visitDate,
+        visitTime: event.visitTime,
       );
       emit(VisitorSubmitSuccess(visitorRequest));
     } catch (e) {

@@ -6,7 +6,7 @@ class GetDashboardSummaryUseCase {
 
   GetDashboardSummaryUseCase(this.repository);
 
-  DashboardSummary call() {
+  Future<DashboardSummary> call() {
     return repository.getSummary();
   }
 }
