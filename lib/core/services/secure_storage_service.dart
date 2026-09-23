@@ -5,8 +5,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 class SecureStorageService {
   static const _tenant = 'hiru616';
   static const _issuer = 'https://api.asgardeo.io/t/$_tenant/oauth2/token';
-  static const _clientId = 'wv849SSjYflfi04zRyv5W4ikiMwa';
-  static const _redirectUrl = 'com.example.another_home://callback';
+  static const _clientId = 'JoXg0fxVkejNMebikcfpzUqYwEsa';
+  static const _redirectUrl = 'com.example.anotherhome://callback';
 
   final FlutterSecureStorage _storage;
   final FlutterAppAuth _appAuth = const FlutterAppAuth();
@@ -38,6 +38,17 @@ class SecureStorageService {
 
   Future<void> clearAll() => _storage.deleteAll();
 
+  /// Whether a JWT access token has expired. A token that isn't a JWT (e.g. an
+  /// opaque token) can't be checked locally, so it's treated as unexpired and the
+  /// gateway decides; a 401 from there clears the session.
+  static bool isTokenExpired(String token) {
+    try {
+      return JwtDecoder.isExpired(token);
+    } on FormatException {
+      return false;
+    }
+  }
+
   /// Retrieve a valid (and refreshed if needed) access token.
   /// If the token is expired and cannot be refreshed, clears credentials and returns null.
   Future<String?> getValidAccessToken() async {
@@ -48,8 +59,10 @@ class SecureStorageService {
     if (accessToken == null) return null;
 
     // If access token is expired, attempt refresh
-    if (JwtDecoder.isExpired(accessToken)) {
-      if (refreshToken != null && !JwtDecoder.isExpired(refreshToken)) {
+    if (isTokenExpired(accessToken)) {
+      // Asgardeo refresh tokens are opaque, not JWTs, so their expiry can't be read
+      // locally. Just try the refresh; the token endpoint rejects an expired one.
+      if (refreshToken != null) {
         try {
           final response = await _appAuth.token(
             TokenRequest(

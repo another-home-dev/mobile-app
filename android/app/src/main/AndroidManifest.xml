@@ -3,11 +3,17 @@
         android:label="another_home"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+        <!-- No android:taskAffinity="" here, even though Flutter's template adds it.
+             With an empty affinity, MainActivity's task doesn't match AppAuth's
+             singleTask AuthorizationManagementActivity, so when the browser hands
+             back com.example.anotherhome://callback Android starts a second,
+             blank copy of that activity in a new task. It logs "AppAuth: No stored
+             state - unable to handle response", drops the authorization code, and
+             the original copy waits forever behind the browser tab. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
-            android:taskAffinity=""
             android:theme="@style/LaunchTheme"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"

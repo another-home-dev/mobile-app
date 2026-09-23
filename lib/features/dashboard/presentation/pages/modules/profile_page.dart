@@ -4,6 +4,7 @@ import 'package:another_home/core/theme/glass_card.dart';
 import 'package:another_home/core/theme/glass_background.dart';
 import 'package:another_home/core/theme/glass_badge.dart';
 import 'package:another_home/core/theme/glass_button.dart';
+import 'package:another_home/core/theme/initials_avatar.dart';
 import 'package:another_home/features/auth/domain/entities/user.dart';
 import 'package:another_home/features/auth/presentation/pages/login_page.dart';
 import 'package:another_home/core/di/service_locator.dart';
@@ -20,7 +21,7 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  late final Future<StudentModel?> _studentFuture;
+  late Future<StudentModel?> _studentFuture;
 
   User get user => widget.user;
 
@@ -65,58 +66,62 @@ class _ProfilePageState extends State<ProfilePage> {
                 borderColor: AppColors.cyan.withValues(alpha: 0.25),
                 child: Column(
                   children: [
-                    Stack(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(3),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(color: AppColors.cyan.withValues(alpha: 0.8), width: 2),
-                            boxShadow: [
-                              BoxShadow(color: AppColors.cyan.withValues(alpha: 0.35), blurRadius: 16),
-                            ],
-                          ),
-                          child: const CircleAvatar(
-                            radius: 44,
-                            backgroundImage: NetworkImage('https://images.unsplash.com/photo-1531427186611-ecfd6d936c79?auto=format&fit=crop&w=200&q=80'),
-                          ),
-                        ),
-                        Positioned(
-                          right: 0,
-                          bottom: 0,
-                          child: GlassCard(
-                            padding: const EdgeInsets.all(6),
-                            borderRadius: BorderRadius.circular(16),
-                            color: AppColors.primary,
-                            borderColor: AppColors.text.withValues(alpha: 0.2),
-                            child: const Icon(Icons.camera_alt_outlined, color: AppColors.text, size: 16),
-                          ),
-                        ),
-                      ],
+                    Container(
+                      padding: const EdgeInsets.all(3),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: AppColors.cyan.withValues(alpha: 0.8), width: 2),
+                        boxShadow: [
+                          BoxShadow(color: AppColors.cyan.withValues(alpha: 0.35), blurRadius: 16),
+                        ],
+                      ),
+                      child: InitialsAvatar(name: user.name, radius: 44),
                     ),
                     const SizedBox(height: 14),
-                    Text(
-                      user.name,
-                      style: const TextStyle(
-                        color: AppColors.text,
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.3,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      user.email,
-                      style: const TextStyle(color: AppColors.muted, fontSize: 13),
-                    ),
-                    const SizedBox(height: 12),
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        GlassBadge(label: 'Room 1-A • Hostel A', color: AppColors.cyan, icon: Icons.roofing_outlined),
-                        SizedBox(width: 8),
-                        GlassBadge(label: 'Resident', color: AppColors.green, icon: Icons.check_circle_outline),
-                      ],
+                    FutureBuilder<StudentModel?>(
+                      future: _studentFuture,
+                      builder: (context, snapshot) {
+                        final student = snapshot.data;
+                        final loading = snapshot.connectionState != ConnectionState.done;
+                        return Column(
+                          children: [
+                            Text(
+                              student?.name ?? user.name,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: AppColors.text,
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              user.email,
+                              style: const TextStyle(color: AppColors.muted, fontSize: 13),
+                            ),
+                            const SizedBox(height: 12),
+                            Wrap(
+                              alignment: WrapAlignment.center,
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                GlassBadge(
+                                  label: loading ? 'Loading room…' : (student?.roomLabel ?? 'Room details unavailable'),
+                                  color: student?.hasRoom == true ? AppColors.cyan : AppColors.muted,
+                                  icon: Icons.roofing_outlined,
+                                ),
+                                if (!loading && student != null)
+                                  GlassBadge(
+                                    label: student.hasRoom ? 'Resident' : 'Awaiting room',
+                                    color: student.hasRoom ? AppColors.green : AppColors.muted,
+                                    icon: student.hasRoom ? Icons.check_circle_outline : Icons.hourglass_empty,
+                                  ),
+                              ],
+                            ),
+                          ],
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -140,9 +145,9 @@ class _ProfilePageState extends State<ProfilePage> {
                         child: Column(
                           children: [
                             _buildInfoRow(Icons.badge_outlined, 'Student ID', student?.studentCode ?? 'Not registered yet'),
-                            _buildInfoRow(Icons.school_outlined, 'Faculty', student?.faculty ?? 'Not set'),
-                            _buildInfoRow(Icons.menu_book_outlined, 'Degree Program', student?.degreeProgram ?? 'Not set'),
-                            _buildInfoRow(Icons.calendar_today_outlined, 'Academic Year', student?.academicYear ?? 'Not set'),
+                            _buildInfoRow(Icons.school_outlined, 'Faculty', _orNotSet(student?.faculty)),
+                            _buildInfoRow(Icons.menu_book_outlined, 'Degree Program', _orNotSet(student?.degreeProgram)),
+                            _buildInfoRow(Icons.calendar_today_outlined, 'Academic Year', _orNotSet(student?.academicYear)),
                           ],
                         ),
                       ),
@@ -156,8 +161,11 @@ class _ProfilePageState extends State<ProfilePage> {
                         borderColor: AppColors.text.withValues(alpha: 0.08),
                         child: Column(
                           children: [
-                            _buildInfoRow(Icons.phone_outlined, 'Mobile Number', student?.contact ?? 'Not available'),
-                            _buildInfoRow(Icons.credit_card_outlined, 'National NIC', student?.nic ?? 'Not set'),
+                            _buildInfoRow(Icons.phone_outlined, 'Mobile Number', _orNotSet(student?.contact)),
+                            _buildInfoRow(Icons.credit_card_outlined, 'National NIC', _orNotSet(student?.nic)),
+                            _buildInfoRow(Icons.home_outlined, 'Home Address', _orNotSet(student?.address)),
+                            _buildInfoRow(Icons.family_restroom_outlined, 'Guardian', _orNotSet(student?.guardianName)),
+                            _buildInfoRow(Icons.contact_phone_outlined, 'Guardian Contact', _orNotSet(student?.guardianContact)),
                           ],
                         ),
                       ),
@@ -168,6 +176,31 @@ class _ProfilePageState extends State<ProfilePage> {
               const SizedBox(height: 20),
 
               const SizedBox(height: 8),
+
+              FutureBuilder<StudentModel?>(
+                future: _studentFuture,
+                builder: (context, snapshot) {
+                  final student = snapshot.data;
+                  if (student == null) return const SizedBox.shrink();
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: GlassButton(
+                      onPressed: () => _showEditSheet(student),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.edit_outlined, color: AppColors.text, size: 20),
+                          SizedBox(width: 8),
+                          Text(
+                            'Edit Profile',
+                            style: TextStyle(color: AppColors.text, fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
 
               // Log Out Button
               GlassButton(
@@ -198,6 +231,124 @@ class _ProfilePageState extends State<ProfilePage> {
         ),
       ),
     );
+  }
+
+  String _orNotSet(String? value) => (value == null || value.trim().isEmpty) ? 'Not set' : value;
+
+  Future<void> _showEditSheet(StudentModel student) async {
+    final fields = <String, (String label, String? value, TextInputType type)>{
+      'name': ('Full Name', student.name, TextInputType.name),
+      'contact': ('Mobile Number', student.contact, TextInputType.phone),
+      'nic': ('National NIC', student.nic, TextInputType.text),
+      'faculty': ('Faculty', student.faculty, TextInputType.text),
+      'degreeProgram': ('Degree Program', student.degreeProgram, TextInputType.text),
+      'academicYear': ('Academic Year', student.academicYear, TextInputType.text),
+      'address': ('Home Address', student.address, TextInputType.streetAddress),
+      'guardianName': ('Guardian Name', student.guardianName, TextInputType.name),
+      'guardianContact': ('Guardian Contact', student.guardianContact, TextInputType.phone),
+    };
+    final controllers = {
+      for (final e in fields.entries) e.key: TextEditingController(text: e.value.$2 ?? ''),
+    };
+    final formKey = GlobalKey<FormState>();
+    var saving = false;
+
+    final updated = await showModalBottomSheet<StudentModel>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surfaceElevated,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheetState) => Padding(
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 20,
+            bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 20,
+          ),
+          child: Form(
+            key: formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    'Edit Profile',
+                    style: TextStyle(color: AppColors.text, fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+                  for (final e in fields.entries)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: TextFormField(
+                        controller: controllers[e.key],
+                        keyboardType: e.value.$3,
+                        style: const TextStyle(color: AppColors.text),
+                        decoration: InputDecoration(
+                          labelText: e.value.$1,
+                          labelStyle: const TextStyle(color: AppColors.muted),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        validator: e.key == 'name'
+                            ? (v) => (v == null || v.trim().isEmpty) ? 'Name is required' : null
+                            : null,
+                      ),
+                    ),
+                  const SizedBox(height: 8),
+                  ElevatedButton(
+                    onPressed: saving
+                        ? null
+                        : () async {
+                            if (!formKey.currentState!.validate()) return;
+                            // Only send what actually changed.
+                            final changes = <String, String>{
+                              for (final e in fields.entries)
+                                if (controllers[e.key]!.text.trim() != (e.value.$2 ?? '').trim())
+                                  e.key: controllers[e.key]!.text.trim(),
+                            };
+                            if (changes.isEmpty) {
+                              Navigator.pop(sheetContext);
+                              return;
+                            }
+                            setSheetState(() => saving = true);
+                            try {
+                              final result = await ServiceLocator.instance.accommodationApiService
+                                  .updateCurrentStudent(changes);
+                              if (sheetContext.mounted) Navigator.pop(sheetContext, result);
+                            } catch (e) {
+                              setSheetState(() => saving = false);
+                              if (sheetContext.mounted) {
+                                ScaffoldMessenger.of(sheetContext).showSnackBar(
+                                  SnackBar(content: Text('Could not save your profile: $e')),
+                                );
+                              }
+                            }
+                          },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: Text(
+                      saving ? 'Saving…' : 'Save Changes',
+                      style: const TextStyle(color: AppColors.text, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    // The controllers aren't disposed here: the sheet is still animating closed and
+    // its text fields still reference them. They're garbage-collected with it.
+    if (updated != null && mounted) {
+      setState(() => _studentFuture = Future.value(updated));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile updated')));
+    }
   }
 
   Widget _buildSectionHeader(String title) {

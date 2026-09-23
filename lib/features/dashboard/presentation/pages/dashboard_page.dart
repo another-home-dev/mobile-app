@@ -3,8 +3,10 @@ import 'package:another_home/core/theme/app_colors.dart';
 import 'package:another_home/core/theme/glass_card.dart';
 import 'package:another_home/core/theme/glass_background.dart';
 import 'package:another_home/core/theme/glass_badge.dart';
+import 'package:another_home/core/theme/initials_avatar.dart';
 
 import '../../../../core/di/service_locator.dart';
+import '../../../../core/network/dtos/accommodation_models.dart';
 import '../../../auth/domain/entities/user.dart';
 import '../../domain/entities/dashboard_summary.dart';
 import 'modules/my_room_page.dart';
@@ -24,6 +26,7 @@ class DashboardPage extends StatefulWidget {
 }
 
 class _DashboardPageState extends State<DashboardPage> {
+  late final Future<StudentModel?> _studentFuture;
   late final Future<DashboardSummary> _summaryFuture;
 
   User get user => widget.user;
@@ -31,7 +34,21 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   void initState() {
     super.initState();
-    _summaryFuture = ServiceLocator.instance.dashboardSummaryUseCase();
+    _studentFuture = _loadStudent();
+    // The summary reads the student id from storage, so wait until it's saved.
+    _summaryFuture = _studentFuture.then((_) => ServiceLocator.instance.dashboardSummaryUseCase());
+  }
+
+  /// Resolves (and on first login creates) this student's record, and stores its
+  /// id for the payment and complaint screens. Returns null if it can't be loaded.
+  Future<StudentModel?> _loadStudent() async {
+    try {
+      final student = await ServiceLocator.instance.accommodationApiService.getCurrentStudent();
+      await ServiceLocator.instance.secureStorageService.saveStudentId(student.id);
+      return student;
+    } catch (_) {
+      return null;
+    }
   }
 
   @override
@@ -78,10 +95,24 @@ class _DashboardPageState extends State<DashboardPage> {
                             const SizedBox(height: 8),
                             GestureDetector(
                               onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MyRoomPage())),
-                              child: const GlassBadge(
-                                label: 'Room 1-A • Hostel A',
-                                color: AppColors.cyan,
-                                icon: Icons.location_on_outlined,
+                              child: FutureBuilder<StudentModel?>(
+                                future: _studentFuture,
+                                builder: (context, snapshot) {
+                                  final student = snapshot.data;
+                                  final String label;
+                                  if (snapshot.connectionState != ConnectionState.done) {
+                                    label = 'Loading room…';
+                                  } else if (student == null) {
+                                    label = 'Room details unavailable';
+                                  } else {
+                                    label = student.roomLabel;
+                                  }
+                                  return GlassBadge(
+                                    label: label,
+                                    color: student?.hasRoom == true ? AppColors.cyan : AppColors.muted,
+                                    icon: Icons.location_on_outlined,
+                                  );
+                                },
                               ),
                             ),
                           ],
@@ -100,10 +131,7 @@ class _DashboardPageState extends State<DashboardPage> {
                               BoxShadow(color: AppColors.cyan.withValues(alpha: 0.3), blurRadius: 12),
                             ],
                           ),
-                          child: const CircleAvatar(
-                            radius: 24,
-                            backgroundImage: NetworkImage('https://images.unsplash.com/photo-1531427186611-ecfd6d936c79?auto=format&fit=crop&w=100&q=80'),
-                          ),
+                          child: InitialsAvatar(name: user.name),
                         ),
                       ),
                     ],

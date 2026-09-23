@@ -3,14 +3,21 @@ import 'package:jwt_decoder/jwt_decoder.dart';
 import '../../services/secure_storage_service.dart';
 import '../api_client.dart';
 import '../dtos/auth_models.dart';
+import '../../utils/role_utils.dart';
 
 class AuthApiService {
   static const _tenant = 'hiru616';
   static const _issuer = 'https://api.asgardeo.io/t/$_tenant/oauth2/token';
   // Must match the mobile app registration reconfigured in Asgardeo as a native/mobile
   // app with Authorization Code + PKCE enabled (see the RBAC setup plan, Phase A.5).
-  static const _clientId = 'wv849SSjYflfi04zRyv5W4ikiMwa';
-  static const _redirectUrl = 'com.example.another_home://callback';
+  static const _clientId = 'JoXg0fxVkejNMebikcfpzUqYwEsa';
+  // No underscore in the scheme: RFC 3986 only allows letters, digits, "+", "-" and
+  // "." there. With "com.example.another_home", browsers can't parse Asgardeo's
+  // redirect as an absolute URL, resolve it as a relative path on api.asgardeo.io
+  // instead (a blank page), and the authorization code never reaches the app.
+  // Must match appAuthRedirectScheme in android/app/build.gradle.kts, the iOS
+  // CFBundleURLSchemes, and the app's authorized redirect URI in Asgardeo.
+  static const _redirectUrl = 'com.example.anotherhome://callback';
   static const _scopes = ['openid', 'profile', 'email', 'roles'];
 
   final ApiClient _apiClient;
@@ -89,23 +96,8 @@ class AuthApiService {
       userId: userId,
       email: email,
       name: name,
-      role: _extractRole(claims),
+      role: resolveAppRole(claims['roles']),
     );
-  }
-
-  /// Asgardeo role names can come through as e.g. "Internal/student" depending on
-  /// how the role claim is configured — normalize to a plain lowercase role name,
-  /// skipping the default "everyone" role Asgardeo attaches to every user.
-  String? _extractRole(Map<String, dynamic> claims) {
-    final roles = claims['roles'];
-    final roleList = roles is List ? roles : (roles == null ? <dynamic>[] : [roles]);
-    for (final raw in roleList) {
-      final normalized = raw.toString().split('/').last.trim().toLowerCase();
-      if (normalized.isNotEmpty && normalized != 'everyone') {
-        return normalized;
-      }
-    }
-    return null;
   }
 
   /// Register a new student account (Pending approval)
