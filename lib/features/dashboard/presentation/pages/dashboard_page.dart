@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:another_home/core/theme/app_colors.dart';
 import 'package:another_home/core/theme/glass_card.dart';
@@ -15,6 +17,7 @@ import 'modules/visitor_page.dart';
 import 'modules/complaint_page.dart';
 import 'modules/notices_page.dart';
 import 'modules/profile_page.dart';
+import 'modules/alerts_page.dart';
 
 class DashboardPage extends StatefulWidget {
   final User user;
@@ -28,6 +31,7 @@ class DashboardPage extends StatefulWidget {
 class _DashboardPageState extends State<DashboardPage> {
   late final Future<StudentModel?> _studentFuture;
   late final Future<DashboardSummary> _summaryFuture;
+  late Future<int> _unreadAlertsFuture;
 
   User get user => widget.user;
 
@@ -37,6 +41,25 @@ class _DashboardPageState extends State<DashboardPage> {
     _studentFuture = _loadStudent();
     // The summary reads the student id from storage, so wait until it's saved.
     _summaryFuture = _studentFuture.then((_) => ServiceLocator.instance.dashboardSummaryUseCase());
+    _unreadAlertsFuture = _studentFuture.then((_) => _countUnreadAlerts());
+  }
+
+  Future<int> _countUnreadAlerts() async {
+    try {
+      final studentId = await ServiceLocator.instance.secureStorageService.getStudentId();
+      if (studentId == null) return 0;
+      final alerts = await ServiceLocator.instance.notificationsApiService.getNotifications(studentId);
+      return alerts.where((a) => !a.isRead).length;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  /// Re-fetches the unread count after the student visits the Alerts page,
+  /// where opening an alert marks it as read.
+  Future<void> _openAlerts() async {
+    await Navigator.push(context, MaterialPageRoute(builder: (_) => const AlertsPage()));
+    if (mounted) setState(() => _unreadAlertsFuture = _countUnreadAlerts());
   }
 
   /// Resolves (and on first login creates) this student's record, and stores its
@@ -45,6 +68,11 @@ class _DashboardPageState extends State<DashboardPage> {
     try {
       final student = await ServiceLocator.instance.accommodationApiService.getCurrentStudent();
       await ServiceLocator.instance.secureStorageService.saveStudentId(student.id);
+      // Registers this device for push (visitor approvals, resolved maintenance
+      // tickets, payment reminders/receipts). Uses the same id the backend's
+      // notifyUser() calls already target, so existing events reach this device
+      // with no other change. No-op if Firebase isn't configured on this build.
+      unawaited(ServiceLocator.instance.pushNotificationService.init(student.id));
       return student;
     } catch (_) {
       return null;
@@ -234,12 +262,15 @@ class _DashboardPageState extends State<DashboardPage> {
                 'Payments',
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PaymentPage())),
               ),
-              _buildNavItem(
-                context,
-                Icons.notifications_none_outlined,
-                'Alerts',
-                badgeCount: 2,
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NoticesPage())),
+              FutureBuilder<int>(
+                future: _unreadAlertsFuture,
+                builder: (context, snapshot) => _buildNavItem(
+                  context,
+                  Icons.notifications_none_outlined,
+                  'Alerts',
+                  badgeCount: snapshot.data ?? 0,
+                  onTap: _openAlerts,
+                ),
               ),
               _buildNavItem(
                 context,
