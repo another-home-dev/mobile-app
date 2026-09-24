@@ -23,4 +23,14 @@ class NotificationsApiService {
   Future<void> markAsRead(String notificationId) async {
     await _apiClient.patch('/notifications/$notificationId/read');
   }
+
+  /// Registers this device's FCM token so the backend can push real
+  /// notifications to it. Called after login and whenever the token refreshes.
+  /// POST /notifications/device-token
+  Future<void> registerDeviceToken(String userId, String fcmToken) async {
+    await _apiClient.post('/notifications/device-token', body: {
+      'userId': userId,
+      'fcmToken': fcmToken,
+    });
+  }
 }

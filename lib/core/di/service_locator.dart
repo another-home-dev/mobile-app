@@ -18,6 +18,7 @@ import 'package:another_home/features/operations/domain/usecases/get_visitors_us
 import 'package:another_home/features/operations/domain/usecases/request_visitor_usecase.dart';
 import 'package:another_home/features/operations/domain/usecases/get_notices_usecase.dart';
 import 'package:another_home/core/services/secure_storage_service.dart';
+import 'package:another_home/core/services/push_notification_service.dart';
 
 
 class ServiceLocator {
@@ -41,6 +42,7 @@ class ServiceLocator {
   late final OperationsApiService operationsApiService = OperationsApiService(apiClient, secureStorageService);
   late final FinanceApiService financeApiService = FinanceApiService(apiClient);
   late final NotificationsApiService notificationsApiService = NotificationsApiService(apiClient);
+  late final PushNotificationService pushNotificationService = PushNotificationService(notificationsApiService);
 
   late final AuthRepository authRepository = AuthRepositoryImpl(authApiService, accommodationApiService, secureStorageService);
   late final LoginUseCase loginUseCase = LoginUseCase(authRepository);
