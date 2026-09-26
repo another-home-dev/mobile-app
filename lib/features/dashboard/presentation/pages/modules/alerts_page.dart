@@ -29,16 +29,14 @@ class _AlertsPageState extends State<AlertsPage> {
     _alertsFuture = _load();
   }
 
-  Future<List<NotificationModel>> _load() async {
-    final studentId = await ServiceLocator.instance.secureStorageService.getStudentId();
-    if (studentId == null) return [];
-    return ServiceLocator.instance.notificationsApiService.getNotifications(studentId);
+  Future<List<NotificationModel>> _load() {
+    return ServiceLocator.instance.getAlertsUseCase();
   }
 
   Future<void> _markAsRead(NotificationModel alert) async {
     if (alert.isRead) return;
     try {
-      await ServiceLocator.instance.notificationsApiService.markAsRead(alert.id);
+      await ServiceLocator.instance.markAlertAsReadUseCase(alert.id);
       setState(() => _alertsFuture = _load());
     } catch (_) {
       // Leave it showing as unread; the student can tap again.
