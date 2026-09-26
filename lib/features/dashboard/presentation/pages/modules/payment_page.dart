@@ -5,6 +5,7 @@ import 'package:another_home/core/theme/glass_button.dart';
 import 'package:another_home/core/theme/glass_background.dart';
 import 'package:another_home/core/theme/glass_badge.dart';
 import 'package:another_home/core/di/service_locator.dart';
+import 'package:another_home/core/errors/student_not_registered_exception.dart';
 import 'package:another_home/core/network/dtos/finance_models.dart';
 
 class PaymentPage extends StatefulWidget {
@@ -16,7 +17,7 @@ class PaymentPage extends StatefulWidget {
 
 class _PaymentPageState extends State<PaymentPage> {
   Future<List<InvoiceModel>>? _invoicesFuture;
-  String? _studentId;
+  bool _notRegistered = false;
 
   @override
   void initState() {
@@ -29,10 +30,14 @@ class _PaymentPageState extends State<PaymentPage> {
   }
 
   Future<List<InvoiceModel>> _fetchInvoices() async {
-    final studentId = await ServiceLocator.instance.secureStorageService.getStudentId();
-    _studentId = studentId;
-    if (studentId == null) return [];
-    return ServiceLocator.instance.financeApiService.getInvoices(studentId);
+    try {
+      final invoices = await ServiceLocator.instance.getInvoicesUseCase();
+      _notRegistered = false;
+      return invoices;
+    } on StudentNotRegisteredException {
+      _notRegistered = true;
+      return [];
+    }
   }
 
   Color _statusColor(String status) {
@@ -70,8 +75,10 @@ class _PaymentPageState extends State<PaymentPage> {
     if (reference == null || reference.isEmpty || !mounted) return;
 
     try {
-      await ServiceLocator.instance.financeApiService.submitPayment(
-        SubmitPaymentDto(invoiceId: invoice.invoiceId, amount: invoice.amount, referenceNumber: reference),
+      await ServiceLocator.instance.submitPaymentUseCase(
+        invoiceId: invoice.invoiceId,
+        amount: invoice.amount,
+        referenceNumber: reference,
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Payment submitted for review.')));
@@ -195,7 +202,7 @@ class _PaymentPageState extends State<PaymentPage> {
                 child: Text('Failed to load payments: ${snapshot.error}', style: const TextStyle(color: AppColors.red)),
               );
             }
-            if (_studentId == null) {
+            if (_notRegistered) {
               return const Center(
                 child: Padding(
                   padding: EdgeInsets.all(24),

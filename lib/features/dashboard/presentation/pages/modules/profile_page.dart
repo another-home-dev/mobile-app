@@ -33,7 +33,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<StudentModel?> _loadStudent() async {
     try {
-      return await ServiceLocator.instance.accommodationApiService.getCurrentStudent();
+      return await ServiceLocator.instance.getCurrentStudentUseCase();
     } on NotFoundException {
       return null;
     }
@@ -313,8 +313,7 @@ class _ProfilePageState extends State<ProfilePage> {
                             }
                             setSheetState(() => saving = true);
                             try {
-                              final result = await ServiceLocator.instance.accommodationApiService
-                                  .updateCurrentStudent(changes);
+                              final result = await ServiceLocator.instance.updateStudentProfileUseCase(changes);
                               if (sheetContext.mounted) Navigator.pop(sheetContext, result);
                             } catch (e) {
                               setSheetState(() => saving = false);
@@ -413,7 +412,7 @@ class _ProfilePageState extends State<ProfilePage> {
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(ctx);
-              await ServiceLocator.instance.authApiService.logout();
+              await ServiceLocator.instance.logoutUseCase();
               if (context.mounted) {
                 Navigator.of(context).pushAndRemoveUntil(
                   MaterialPageRoute(builder: (_) => const LoginPage()),

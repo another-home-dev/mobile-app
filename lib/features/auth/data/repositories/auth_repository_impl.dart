@@ -47,4 +47,9 @@ class AuthRepositoryImpl implements AuthRepository {
       role: response.role,
     );
   }
+
+  @override
+  Future<void> logout() {
+    return _authApiService.logout();
+  }
 }

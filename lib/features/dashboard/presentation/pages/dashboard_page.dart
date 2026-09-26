@@ -46,9 +46,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Future<int> _countUnreadAlerts() async {
     try {
-      final studentId = await ServiceLocator.instance.secureStorageService.getStudentId();
-      if (studentId == null) return 0;
-      final alerts = await ServiceLocator.instance.notificationsApiService.getNotifications(studentId);
+      final alerts = await ServiceLocator.instance.getAlertsUseCase();
       return alerts.where((a) => !a.isRead).length;
     } catch (_) {
       return 0;
@@ -66,8 +64,7 @@ class _DashboardPageState extends State<DashboardPage> {
   /// id for the payment and complaint screens. Returns null if it can't be loaded.
   Future<StudentModel?> _loadStudent() async {
     try {
-      final student = await ServiceLocator.instance.accommodationApiService.getCurrentStudent();
-      await ServiceLocator.instance.secureStorageService.saveStudentId(student.id);
+      final student = await ServiceLocator.instance.getCurrentStudentUseCase();
       // Registers this device for push (visitor approvals, resolved maintenance
       // tickets, payment reminders/receipts). Uses the same id the backend's
       // notifyUser() calls already target, so existing events reach this device
