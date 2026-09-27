@@ -11,6 +11,9 @@ class FakeAuthRepository implements AuthRepository {
   Future<User> login() async {
     return const User(id: '1', name: 'Amal', email: 'student@mail.com', role: 'student');
   }
+
+  @override
+  Future<void> logout() async {}
 }
 
 void main() {

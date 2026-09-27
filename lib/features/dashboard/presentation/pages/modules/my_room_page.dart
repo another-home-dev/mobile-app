@@ -4,6 +4,7 @@ import 'package:another_home/core/theme/glass_card.dart';
 import 'package:another_home/core/theme/glass_background.dart';
 import 'package:another_home/core/theme/glass_badge.dart';
 import 'package:another_home/core/di/service_locator.dart';
+import 'package:another_home/core/errors/student_not_registered_exception.dart';
 import 'package:another_home/core/network/dtos/accommodation_models.dart';
 
 class MyRoomPage extends StatefulWidget {
@@ -23,16 +24,11 @@ class _MyRoomPageState extends State<MyRoomPage> {
   }
 
   Future<RoomModel?> _loadMyRoom() async {
-    final studentId = await ServiceLocator.instance.secureStorageService.getStudentId();
-    if (studentId == null) return null;
-
-    final rooms = await ServiceLocator.instance.accommodationApiService.getRooms();
-    for (final room in rooms) {
-      if (room.assignedStudents.any((s) => s.id == studentId)) {
-        return room;
-      }
+    try {
+      return await ServiceLocator.instance.getMyRoomUseCase();
+    } on StudentNotRegisteredException {
+      return null;
     }
-    return null;
   }
 
   @override
