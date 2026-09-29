@@ -197,25 +197,19 @@ class _DashboardPageState extends State<DashboardPage> {
                   const SizedBox(height: 28),
                   const Text('QUICK ACTIONS', style: TextStyle(color: AppColors.muted, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
                   const SizedBox(height: 14),
-                  Column(
+                  GridView.count(
+                    crossAxisCount: 3,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    mainAxisSpacing: 10,
+                    crossAxisSpacing: 10,
+                    childAspectRatio: 0.95,
                     children: [
-                      Row(
-                        children: [
-                          Expanded(child: _buildQuickActionBtn(context, Icons.meeting_room_outlined, 'My Room', AppColors.primary, const MyRoomPage())),
-                          const SizedBox(width: 10),
-                          Expanded(child: _buildQuickActionBtn(context, Icons.payment_outlined, 'Payment', AppColors.primary, const PaymentPage())),
-                          const SizedBox(width: 10),
-                          Expanded(child: _buildQuickActionBtn(context, Icons.people_outline, 'Visitor', AppColors.cyan, const VisitorPage())),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      Row(
-                        children: [
-                          Expanded(child: _buildQuickActionBtn(context, Icons.build_outlined, 'Maintenance', AppColors.orange, const ComplaintPage())),
-                          const SizedBox(width: 10),
-                          Expanded(child: _buildQuickActionBtn(context, Icons.notifications_none_outlined, 'Notices', AppColors.green, const NoticesPage())),
-                        ],
-                      ),
+                      _buildQuickActionBtn(context, Icons.meeting_room_outlined, 'My Room', AppColors.primary, const MyRoomPage()),
+                      _buildQuickActionBtn(context, Icons.payment_outlined, 'Payment', AppColors.primary, const PaymentPage()),
+                      _buildQuickActionBtn(context, Icons.people_outline, 'Visitor', AppColors.cyan, const VisitorPage()),
+                      _buildQuickActionBtn(context, Icons.build_outlined, 'Maintenance', AppColors.orange, const ComplaintPage()),
+                      _buildQuickActionBtn(context, Icons.notifications_none_outlined, 'Notices', AppColors.green, const NoticesPage()),
                     ],
                   ),
                 ],
