@@ -43,7 +43,6 @@ class LoginPage extends StatelessWidget {
                       style: TextStyle(
                         color: AppColors.text,
                         fontSize: 32,
-                        fontFamily: 'serif',
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -88,10 +87,8 @@ class LoginPage extends StatelessWidget {
                             BlocBuilder<LoginBloc, LoginState>(
                               builder: (context, state) {
                                 return GlassButton(
-                                  onPressed: () {
-                                    if (state is LoginLoading) return;
-                                    context.read<LoginBloc>().add(const LoginSubmitted());
-                                  },
+                                  enabled: state is! LoginLoading,
+                                  onPressed: () => context.read<LoginBloc>().add(const LoginSubmitted()),
                                   color: AppColors.primary,
                                   child: state is LoginLoading
                                       ? const SizedBox(

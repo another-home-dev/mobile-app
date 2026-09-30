@@ -7,7 +7,10 @@ class AppColors {
   static const Color sidebar = Color(0xFF0C1622);
   static const Color surface = Color(0xFF0F1B25);
   static const Color surfaceElevated = Color(0xFF0B1320);
-  static const Color primary = Color(0xFF2F80ED);
+  // Matches the web dashboard's dark-mode primary button (dark:bg-primary-600
+  // in another-home-frontend/frontend/src/index.css) so both surfaces share
+  // the same brand blue.
+  static const Color primary = Color(0xFF2563EB);
   static const Color primaryDeep = Color(0xFF163B6B);
   static const Color cyan = Color(0xFF00C2FF);
   static const Color green = Color(0xFF23D18B);

@@ -12,6 +12,7 @@ class GlassButton extends StatelessWidget {
   final double? width;
   final BorderRadiusGeometry? borderRadius;
   final List<BoxShadow>? boxShadow;
+  final bool enabled;
 
   const GlassButton({
     super.key,
@@ -24,6 +25,7 @@ class GlassButton extends StatelessWidget {
     this.width,
     this.borderRadius,
     this.boxShadow,
+    this.enabled = true,
   });
 
   @override
@@ -32,53 +34,58 @@ class GlassButton extends StatelessWidget {
     final buttonColor = color ?? AppColors.primary;
     final border = borderColor ?? AppColors.text.withValues(alpha: 0.2);
 
-    return Container(
-      width: width ?? double.infinity,
-      height: height,
-      decoration: BoxDecoration(
-        borderRadius: radius,
-        boxShadow: boxShadow ?? [
-          BoxShadow(
-            color: buttonColor.withValues(alpha: 0.35),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: radius,
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: onPressed,
-              borderRadius: radius as BorderRadius,
-              splashColor: AppColors.text.withValues(alpha: 0.15),
-              highlightColor: AppColors.text.withValues(alpha: 0.08),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                decoration: BoxDecoration(
-                  borderRadius: radius,
-                  border: Border.all(color: border, width: 1.2),
-                  gradient: LinearGradient(
-                    colors: [
-                      buttonColor.withValues(alpha: 0.85),
-                      buttonColor.withValues(alpha: 0.65),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+    return Opacity(
+      opacity: enabled ? 1 : 0.45,
+      child: Container(
+        width: width ?? double.infinity,
+        height: height,
+        decoration: BoxDecoration(
+          borderRadius: radius,
+          boxShadow: !enabled
+              ? null
+              : boxShadow ?? [
+                  BoxShadow(
+                    color: buttonColor.withValues(alpha: 0.35),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
                   ),
-                ),
-                child: Center(
-                  child: DefaultTextStyle(
-                    style: TextStyle(
-                      color: textColor ?? AppColors.text,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.3,
+                ],
+        ),
+        child: ClipRRect(
+          borderRadius: radius,
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: enabled ? onPressed : null,
+                borderRadius: radius as BorderRadius,
+                splashColor: AppColors.text.withValues(alpha: 0.15),
+                highlightColor: AppColors.text.withValues(alpha: 0.08),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  decoration: BoxDecoration(
+                    borderRadius: radius,
+                    border: Border.all(color: border, width: 1.2),
+                    gradient: LinearGradient(
+                      colors: [
+                        buttonColor.withValues(alpha: 0.85),
+                        buttonColor.withValues(alpha: 0.65),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                    child: child,
+                  ),
+                  child: Center(
+                    child: DefaultTextStyle(
+                      style: TextStyle(
+                        color: textColor ?? AppColors.text,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.3,
+                      ),
+                      child: child,
+                    ),
                   ),
                 ),
               ),
