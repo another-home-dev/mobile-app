@@ -14,6 +14,7 @@ class AccommodationRepositoryImpl implements AccommodationRepository {
   Future<StudentModel> getCurrentStudent() async {
     final student = await _apiService.getCurrentStudent();
     await _secureStorage.saveStudentId(student.id);
+    await _secureStorage.saveRoomId(student.roomId);
     return student;
   }
 

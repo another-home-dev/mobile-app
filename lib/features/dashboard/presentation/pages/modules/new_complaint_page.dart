@@ -21,6 +21,15 @@ class _NewComplaintPageState extends State<NewComplaintPage> {
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   IncidentCategory _selectedCategory = IncidentCategory.other;
+  String? _roomId;
+
+  @override
+  void initState() {
+    super.initState();
+    ServiceLocator.instance.secureStorageService.getRoomId().then((id) {
+      if (mounted) setState(() => _roomId = id);
+    });
+  }
 
   @override
   void dispose() {
@@ -135,12 +144,18 @@ class _NewComplaintPageState extends State<NewComplaintPage> {
                             );
                             return;
                           }
+                          if (_roomId == null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('You need a room assigned before filing a maintenance request. Contact your hostel warden.')),
+                            );
+                            return;
+                          }
                           context.read<ComplaintBloc>().add(
                                 SubmitComplaint(
                                   category: _selectedCategory,
                                   title: title,
                                   description: desc.isEmpty ? title : desc,
-                                  roomId: '1-A', // Linked to user's room
+                                  roomId: _roomId!,
                                 ),
                               );
                         },

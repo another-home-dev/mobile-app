@@ -259,6 +259,15 @@ class _AddVisitorPageState extends State<AddVisitorPage> {
   final _nameController = TextEditingController();
   final _nicController = TextEditingController();
   String _selectedPurpose = 'Personal Visit';
+  String? _roomId;
+
+  @override
+  void initState() {
+    super.initState();
+    ServiceLocator.instance.secureStorageService.getRoomId().then((id) {
+      if (mounted) setState(() => _roomId = id);
+    });
+  }
 
   @override
   void dispose() {
@@ -340,6 +349,12 @@ class _AddVisitorPageState extends State<AddVisitorPage> {
                             );
                             return;
                           }
+                          if (_roomId == null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('You need a room assigned before requesting a visitor. Contact your hostel warden.')),
+                            );
+                            return;
+                          }
 
                           // Format today's date as YYYY-MM-DD
                           final now = DateTime.now();
@@ -347,7 +362,7 @@ class _AddVisitorPageState extends State<AddVisitorPage> {
 
                           context.read<VisitorBloc>().add(
                                 SubmitVisitorRequest(
-                                  roomId: '1-A', // Linked to user's room
+                                  roomId: _roomId!,
                                   visitorName: name,
                                   visitorContact: contact,
                                   purpose: _selectedPurpose,

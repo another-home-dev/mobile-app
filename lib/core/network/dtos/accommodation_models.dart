@@ -133,6 +133,7 @@ class StudentModel {
   final String? guardianName;
   final String? guardianContact;
   final String? address;
+  final String? roomId;
   final String? roomNumber;
   final String? buildingName;
 
@@ -149,6 +150,7 @@ class StudentModel {
     this.guardianName,
     this.guardianContact,
     this.address,
+    this.roomId,
     this.roomNumber,
     this.buildingName,
   });
@@ -174,6 +176,7 @@ class StudentModel {
         guardianName: json['guardianName'] as String?,
         guardianContact: json['guardianContact'] as String?,
         address: json['address'] as String?,
+        roomId: json['roomId'] as String?,
         roomNumber: json['roomNumber'] as String?,
         buildingName: json['buildingName'] as String?,
       );

@@ -34,6 +34,7 @@ class AuthRepositoryImpl implements AuthRepository {
     try {
       final student = await _accommodationApiService.getCurrentStudent();
       await _secureStorage.saveStudentId(student.id);
+      await _secureStorage.saveRoomId(student.roomId);
     } on NotFoundException {
       // Not registered by a warden yet — not fatal to login.
     } catch (_) {
