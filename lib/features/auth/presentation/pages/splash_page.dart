@@ -4,7 +4,6 @@ import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:another_home/core/di/service_locator.dart';
 import 'package:another_home/core/services/secure_storage_service.dart';
 import 'package:another_home/core/theme/app_colors.dart';
-import 'package:another_home/core/theme/glass_background.dart';
 import 'package:another_home/features/auth/domain/entities/user.dart';
 import 'package:another_home/features/auth/presentation/pages/login_page.dart';
 import 'package:another_home/features/dashboard/presentation/pages/dashboard_page.dart';
@@ -44,7 +43,7 @@ class _SplashPageState extends State<SplashPage> {
 
           // Fetch user profile live from Asgardeo's UserInfo endpoint
           final liveProfile = await ServiceLocator.instance.authApiService.fetchUserProfile();
-          
+
           final String userId;
           final String email;
           final String name;
@@ -60,7 +59,7 @@ class _SplashPageState extends State<SplashPage> {
             final decoded = JwtDecoder.decode(idToken);
             userId = decoded['sub'] as String? ?? 'unknown';
             email = decoded['email'] as String? ?? '';
-            
+
             String tempName = decoded['name'] as String? ?? '';
             if (tempName.isEmpty) {
               final givenName = decoded['given_name'] as String? ?? '';
@@ -80,17 +79,10 @@ class _SplashPageState extends State<SplashPage> {
           if (role != 'student') {
             await secureStorage.clearAll();
           } else {
-            final user = User(
-              id: userId,
-              name: name,
-              email: email,
-              role: role,
-            );
+            final user = User(id: userId, name: name, email: email, role: role);
 
             if (!mounted) return;
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (_) => DashboardPage(user: user)),
-            );
+            Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => DashboardPage(user: user)));
             return;
           }
         }
@@ -100,50 +92,31 @@ class _SplashPageState extends State<SplashPage> {
     }
 
     if (!mounted) return;
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const LoginPage()),
-    );
+    Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const LoginPage()));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bg,
-      body: GlassBackground(
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text(
-                'ANOTHER HOME',
-                style: TextStyle(
-                  color: AppColors.cyan,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 4,
-                ),
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'Welcome Back',
-                style: TextStyle(
-                  color: AppColors.text,
-                  fontSize: 28,
-                  fontFamily: 'serif',
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 48),
-              const SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                  color: AppColors.cyan,
-                  strokeWidth: 2.5,
-                ),
-              ),
-            ],
-          ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Image.asset('assets/images/logo.png', width: 104, height: 104),
+            const SizedBox(height: 20),
+            const Text(
+              'Another Home',
+              style: TextStyle(color: AppColors.ink, fontSize: 28, fontWeight: FontWeight.w800, letterSpacing: -0.5),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Your hostel, in your pocket',
+              style: TextStyle(color: AppColors.muted, fontSize: 15, fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(height: 44),
+            const SizedBox(width: 26, height: 26, child: CircularProgressIndicator(strokeWidth: 2.8)),
+          ],
         ),
       ),
     );

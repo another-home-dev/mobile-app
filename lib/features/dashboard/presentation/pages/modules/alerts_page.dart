@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:another_home/core/theme/app_colors.dart';
-import 'package:another_home/core/theme/glass_card.dart';
-import 'package:another_home/core/theme/glass_background.dart';
+import 'package:another_home/core/theme/ui_components.dart';
 import 'package:another_home/core/di/service_locator.dart';
 import 'package:another_home/core/network/dtos/notification_models.dart';
 
@@ -43,109 +42,97 @@ class _AlertsPageState extends State<AlertsPage> {
     }
   }
 
-  String _formatDate(DateTime date) {
-    const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-    ];
-    return '${date.day} ${months[date.month - 1]} ${date.year}';
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.bg,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.text),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text('Alerts'),
-        centerTitle: true,
-      ),
-      body: GlassBackground(
-        child: FutureBuilder<List<NotificationModel>>(
-          future: _alertsFuture,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator(color: AppColors.primary));
-            }
-            if (snapshot.hasError) {
-              return Center(
-                child: Text(
-                  'Failed to load alerts: ${snapshot.error}',
-                  style: const TextStyle(color: AppColors.red),
-                ),
-              );
-            }
-            final alerts = snapshot.data ?? [];
-            if (alerts.isEmpty) {
-              return const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(24),
-                  child: Text(
-                    "No alerts yet. You'll see updates here for visitor requests, "
-                    'maintenance tickets and payments.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: AppColors.muted),
-                  ),
-                ),
-              );
-            }
-            return ListView(
-              padding: const EdgeInsets.all(24),
-              children: alerts.map(_buildAlertItem).toList(),
+      appBar: AppBar(title: const Text('Alerts')),
+      body: FutureBuilder<List<NotificationModel>>(
+        future: _alertsFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return MessageView.error(
+              title: "Couldn't load alerts",
+              message: '${snapshot.error}',
+              onAction: () => setState(() => _alertsFuture = _load()),
             );
-          },
-        ),
+          }
+          final alerts = snapshot.data ?? [];
+          if (alerts.isEmpty) {
+            return const MessageView(
+              icon: Icons.notifications_none_rounded,
+              title: "You're all caught up",
+              message: "You'll see updates here for visitor requests, maintenance tickets and payments.",
+            );
+          }
+          return RefreshIndicator(
+            onRefresh: () async {
+              final next = _load();
+              setState(() => _alertsFuture = next);
+              await next;
+            },
+            child: ListView.builder(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
+              itemCount: alerts.length,
+              itemBuilder: (context, i) => _buildAlert(alerts[i]),
+            ),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildAlertItem(NotificationModel alert) {
-    return GlassCard(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(20),
-      borderRadius: BorderRadius.circular(20),
-      color: AppColors.surface.withValues(alpha: 0.5),
-      borderColor: alert.isRead
-          ? AppColors.text.withValues(alpha: 0.08)
-          : AppColors.primary.withValues(alpha: 0.35),
+  IconData _iconFor(NotificationModel alert) {
+    final t = '${alert.title} ${alert.message}'.toLowerCase();
+    if (t.contains('visitor')) return Icons.group_rounded;
+    if (t.contains('payment') || t.contains('invoice') || t.contains('fee')) return Icons.account_balance_wallet_rounded;
+    if (t.contains('maintenance') || t.contains('complaint') || t.contains('ticket')) return Icons.handyman_rounded;
+    return Icons.notifications_rounded;
+  }
+
+  Widget _buildAlert(NotificationModel alert) {
+    final unread = !alert.isRead;
+    return AppCard(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(16),
+      color: unread ? AppColors.primarySoft.withValues(alpha: 0.55) : AppColors.surface,
+      borderColor: unread ? AppColors.primary.withValues(alpha: 0.25) : AppColors.border,
       onTap: () => _markAsRead(alert),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (!alert.isRead)
-            Container(
-              margin: const EdgeInsets.only(top: 6, right: 12),
-              width: 8,
-              height: 8,
-              decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
-            ),
+          IconTile(icon: _iconFor(alert), color: unread ? AppColors.primary : AppColors.muted, size: 40),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Expanded(
                       child: Text(
                         alert.title,
-                        style: TextStyle(
-                          color: AppColors.text,
-                          fontWeight: alert.isRead ? FontWeight.w500 : FontWeight.bold,
-                          fontSize: 15,
-                        ),
+                        style: TextStyle(color: AppColors.ink, fontWeight: unread ? FontWeight.w800 : FontWeight.w600, fontSize: 15),
                       ),
                     ),
-                    Text(_formatDate(alert.createdAt), style: const TextStyle(color: AppColors.muted, fontSize: 12)),
+                    if (unread)
+                      Container(
+                        width: 8,
+                        height: 8,
+                        margin: const EdgeInsets.only(left: 8),
+                        decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+                      ),
                   ],
                 ),
-                const SizedBox(height: 6),
-                Text(alert.message, style: const TextStyle(color: AppColors.muted, fontSize: 14, height: 1.4)),
+                const SizedBox(height: 4),
+                Text(alert.message, style: const TextStyle(color: AppColors.text, fontSize: 14, height: 1.4)),
+                const SizedBox(height: 8),
+                Text(
+                  formatShortDate(alert.createdAt),
+                  style: const TextStyle(color: AppColors.faint, fontSize: 12, fontWeight: FontWeight.w600),
+                ),
               ],
             ),
           ),

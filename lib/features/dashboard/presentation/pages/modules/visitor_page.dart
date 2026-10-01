@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:another_home/core/theme/app_colors.dart';
-import 'package:another_home/core/theme/glass_card.dart';
-import 'package:another_home/core/theme/glass_button.dart';
-import 'package:another_home/core/theme/glass_background.dart';
-import 'package:another_home/core/theme/glass_badge.dart';
+import 'package:another_home/core/theme/initials_avatar.dart';
+import 'package:another_home/core/theme/ui_components.dart';
 import 'package:another_home/core/di/service_locator.dart';
 import '../../../../operations/presentation/bloc/visitor/visitor_bloc.dart';
 import '../../../../operations/presentation/bloc/visitor/visitor_event.dart';
@@ -31,206 +29,167 @@ class VisitorView extends StatelessWidget {
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
       case 'approved':
-        return AppColors.green;
+        return AppColors.success;
       case 'pending':
-        return AppColors.primary;
+        return AppColors.warning;
       case 'rejected':
-        return AppColors.red;
+        return AppColors.danger;
       default:
         return AppColors.muted;
+    }
+  }
+
+  Future<void> _openNew(BuildContext context) async {
+    final result = await Navigator.push(context, MaterialPageRoute(builder: (_) => const AddVisitorPage()));
+    if (result == true && context.mounted) {
+      context.read<VisitorBloc>().add(const LoadVisitors());
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.bg,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.text),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text('Visitors'),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: Builder(
-              builder: (context) {
-                return GlassCard(
-                  width: 40,
-                  height: 40,
-                  padding: EdgeInsets.zero,
-                  borderRadius: BorderRadius.circular(12),
-                  color: AppColors.cyan.withValues(alpha: 0.25),
-                  borderColor: AppColors.cyan.withValues(alpha: 0.4),
-                  onTap: () async {
-                    final result = await Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const AddVisitorPage()),
-                    );
-                    if (result == true && context.mounted) {
-                      context.read<VisitorBloc>().add(const LoadVisitors());
-                    }
-                  },
-                  child: const Icon(Icons.add, color: AppColors.text, size: 22),
-                );
-              }
-            ),
-          ),
-        ],
+      appBar: AppBar(title: const Text('Visitors')),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _openNew(context),
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.white,
+        icon: const Icon(Icons.person_add_alt_1_rounded),
+        label: const Text('New visitor', style: TextStyle(fontWeight: FontWeight.w700)),
       ),
-      body: GlassBackground(
-        child: SafeArea(
-          child: BlocBuilder<VisitorBloc, VisitorState>(
-            builder: (context, state) {
-              if (state is VisitorLoading) {
-                return const Center(
-                  child: CircularProgressIndicator(color: AppColors.cyan),
-                );
-              } else if (state is VisitorFailure) {
-                return Center(
-                  child: Text(
-                    'Failed to load visitors: ${state.message}',
-                    style: const TextStyle(color: AppColors.red),
+      body: BlocBuilder<VisitorBloc, VisitorState>(
+        builder: (context, state) {
+          if (state is VisitorLoading) {
+            return const Center(child: CircularProgressIndicator());
+          } else if (state is VisitorFailure) {
+            return MessageView.error(
+              title: "Couldn't load visitors",
+              message: state.message,
+              onAction: () => context.read<VisitorBloc>().add(const LoadVisitors()),
+            );
+          } else if (state is VisitorLoadSuccess) {
+            final visitors = state.visitors;
+            int count(String s) => visitors.where((v) => v.status.toLowerCase() == s).length;
+
+            return RefreshIndicator(
+              onRefresh: () async => context.read<VisitorBloc>().add(const LoadVisitors()),
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 96),
+                children: [
+                  Row(
+                    children: [
+                      _buildStat(count('approved'), 'Approved', AppColors.success),
+                      const SizedBox(width: 10),
+                      _buildStat(count('pending'), 'Pending', AppColors.warning),
+                      const SizedBox(width: 10),
+                      _buildStat(count('rejected'), 'Rejected', AppColors.danger),
+                    ],
                   ),
-                );
-              } else if (state is VisitorLoadSuccess) {
-                final visitors = state.visitors;
-
-                final approvedCount = visitors.where((v) => v.status.toLowerCase() == 'approved').length;
-                final pendingCount = visitors.where((v) => v.status.toLowerCase() == 'pending').length;
-                final rejectedCount = visitors.where((v) => v.status.toLowerCase() == 'rejected').length;
-
-                return Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                      child: Row(
-                        children: [
-                          Expanded(child: _buildStatCard(approvedCount.toString(), 'Approved', AppColors.green)),
-                          const SizedBox(width: 12),
-                          Expanded(child: _buildStatCard(pendingCount.toString(), 'Pending', AppColors.orange)),
-                          const SizedBox(width: 12),
-                          Expanded(child: _buildStatCard(rejectedCount.toString(), 'Rejected', AppColors.red)),
-                        ],
+                  const SizedBox(height: 24),
+                  const SectionTitle('Your requests'),
+                  if (visitors.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 24),
+                      child: MessageView(
+                        icon: Icons.group_outlined,
+                        title: 'No visitor requests yet',
+                        message: 'Expecting a guest? Tap "New visitor" to request a pass from your warden.',
+                        color: AppColors.info,
+                      ),
+                    )
+                  else
+                    ...visitors.map(
+                      (visitor) => _buildVisitorCard(
+                        name: visitor.visitorName,
+                        contact: visitor.visitorContact,
+                        date: visitor.expectedDate,
+                        time: visitor.visitTime.isEmpty ? 'Anytime' : visitor.visitTime,
+                        purpose: visitor.relation,
+                        status: visitor.status,
+                        statusColor: _getStatusColor(visitor.status),
                       ),
                     ),
-                    Expanded(
-                      child: visitors.isEmpty
-                          ? const Center(
-                              child: Text(
-                                'No visitor requests yet.',
-                                style: TextStyle(color: AppColors.muted),
-                              ),
-                            )
-                          : ListView.builder(
-                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                              itemCount: visitors.length,
-                              itemBuilder: (context, index) {
-                                final visitor = visitors[index];
-                                
-                                // Try to extract NIC and Purpose from relation field if structured
-                                String nic = 'N/A';
-                                String purpose = visitor.relation;
-                                if (visitor.relation.contains('NIC:')) {
-                                  final parts = visitor.relation.split('|');
-                                  if (parts.length == 2) {
-                                    nic = parts[0].replaceAll('NIC:', '').trim();
-                                    purpose = parts[1].replaceAll('Purpose:', '').trim();
-                                  }
-                                }
-
-                                return _buildVisitorCard(
-                                  name: visitor.visitorName,
-                                  id: nic,
-                                  date: visitor.expectedDate,
-                                  time: 'Anytime',
-                                  purpose: purpose,
-                                  status: visitor.status,
-                                  statusColor: _getStatusColor(visitor.status),
-                                );
-                              },
-                            ),
-                    ),
-                  ],
-                );
-              }
-              return const SizedBox.shrink();
-            },
-          ),
-        ),
+                ],
+              ),
+            );
+          }
+          return const SizedBox.shrink();
+        },
       ),
     );
   }
 
-  Widget _buildStatCard(String count, String label, Color countColor) {
-    return GlassCard(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      borderRadius: BorderRadius.circular(16),
-      color: AppColors.surfaceElevated.withValues(alpha: 0.4),
-      borderColor: countColor.withValues(alpha: 0.3),
-      child: Column(
-        children: [
-          Text(count, style: TextStyle(color: countColor, fontSize: 24, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 4),
-          Text(label, style: const TextStyle(color: AppColors.muted, fontSize: 13, fontWeight: FontWeight.w500)),
-        ],
+  Widget _buildStat(int count, String label, Color color) {
+    return Expanded(
+      child: AppCard(
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '$count',
+              style: TextStyle(color: color, fontSize: 24, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: const TextStyle(color: AppColors.muted, fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildVisitorCard({
     required String name,
-    required String id,
+    required String contact,
     required String date,
     required String time,
     required String purpose,
     required String status,
     required Color statusColor,
   }) {
-    return GlassCard(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(20),
-      borderRadius: BorderRadius.circular(20),
-      color: AppColors.surface.withValues(alpha: 0.5),
-      borderColor: AppColors.text.withValues(alpha: 0.08),
+    return AppCard(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
       child: Column(
         children: [
           Row(
             children: [
-              GlassCard(
-                width: 48,
-                height: 48,
-                padding: EdgeInsets.zero,
-                borderRadius: BorderRadius.circular(24),
-                color: AppColors.overlay,
-                borderColor: AppColors.text.withValues(alpha: 0.1),
-                child: const Icon(Icons.person_outline, color: AppColors.cyan, size: 24),
-              ),
-              const SizedBox(width: 16),
+              InitialsAvatar(name: name, radius: 22),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(name, style: const TextStyle(color: AppColors.text, fontSize: 16, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 4),
-                    Text('NIC: $id', style: const TextStyle(color: AppColors.muted, fontSize: 13)),
+                    Text(
+                      name,
+                      style: const TextStyle(color: AppColors.ink, fontSize: 15, fontWeight: FontWeight.w700),
+                    ),
+                    if (contact.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(contact, style: const TextStyle(color: AppColors.muted, fontSize: 13)),
+                    ],
                   ],
                 ),
               ),
-              GlassBadge(label: status, color: statusColor),
+              StatusPill(label: status, color: statusColor),
             ],
           ),
-          const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _buildIconText(Icons.calendar_today_outlined, date),
-              _buildIconText(Icons.access_time_outlined, time),
-              _buildIconText(Icons.description_outlined, purpose),
-            ],
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(color: AppColors.surfaceAlt, borderRadius: BorderRadius.circular(12)),
+            child: Row(
+              children: [
+                _buildIconText(Icons.event_rounded, date),
+                const SizedBox(width: 14),
+                _buildIconText(Icons.schedule_rounded, time),
+                const SizedBox(width: 14),
+                Expanded(child: _buildIconText(Icons.label_outline_rounded, purpose.isEmpty ? '—' : purpose)),
+              ],
+            ),
           ),
         ],
       ),
@@ -239,10 +198,18 @@ class VisitorView extends StatelessWidget {
 
   Widget _buildIconText(IconData icon, String text) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, color: AppColors.muted, size: 14),
-        const SizedBox(width: 6),
-        Text(text, style: const TextStyle(color: AppColors.muted, fontSize: 12)),
+        Icon(icon, color: AppColors.muted, size: 16),
+        const SizedBox(width: 5),
+        Flexible(
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: AppColors.text, fontSize: 12, fontWeight: FontWeight.w600),
+          ),
+        ),
       ],
     );
   }
@@ -256,15 +223,22 @@ class AddVisitorPage extends StatefulWidget {
 }
 
 class _AddVisitorPageState extends State<AddVisitorPage> {
+  static const _purposes = {
+    'Personal Visit': Icons.person_rounded,
+    'Family Visit': Icons.family_restroom_rounded,
+    'Academic Connection': Icons.school_rounded,
+  };
+
   final _nameController = TextEditingController();
-  final _nicController = TextEditingController();
+  final _contactController = TextEditingController();
   String _selectedPurpose = 'Personal Visit';
+  DateTime _visitDate = DateTime.now();
   String? _roomId;
 
   @override
   void initState() {
     super.initState();
-    ServiceLocator.instance.secureStorageService.getRoomId().then((id) {
+    ServiceLocator.instance.accommodationRepository.currentRoomId().then((id) {
       if (mounted) setState(() => _roomId = id);
     });
   }
@@ -272,8 +246,53 @@ class _AddVisitorPageState extends State<AddVisitorPage> {
   @override
   void dispose() {
     _nameController.dispose();
-    _nicController.dispose();
+    _contactController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickDate() async {
+    final today = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _visitDate,
+      firstDate: DateTime(today.year, today.month, today.day),
+      lastDate: today.add(const Duration(days: 60)),
+    );
+    if (picked != null) setState(() => _visitDate = picked);
+  }
+
+  void _submit(BuildContext context) {
+    final name = _nameController.text.trim();
+    final contact = _contactController.text.trim();
+
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter visitor name')));
+      return;
+    }
+    if (contact.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter a contact number')));
+      return;
+    }
+    if (_roomId == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('You need a room assigned before requesting a visitor. Contact your hostel warden.')));
+      return;
+    }
+
+    final d = _visitDate;
+    final visitDate = '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+    context.read<VisitorBloc>().add(
+      SubmitVisitorRequest(
+        roomId: _roomId!,
+        visitorName: name,
+        visitorContact: contact,
+        purpose: _selectedPurpose,
+        visitDate: visitDate,
+        visitTime: 'Anytime',
+      ),
+    );
   }
 
   @override
@@ -283,166 +302,110 @@ class _AddVisitorPageState extends State<AddVisitorPage> {
         getVisitorsUseCase: ServiceLocator.instance.getVisitorsUseCase,
         requestVisitorUseCase: ServiceLocator.instance.requestVisitorUseCase,
       ),
-      child: Scaffold(
-        backgroundColor: AppColors.bg,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: AppColors.text),
-            onPressed: () => Navigator.pop(context),
-          ),
-          title: const Text('Add New Visitor'),
-        ),
-        body: GlassBackground(
-          child: BlocConsumer<VisitorBloc, VisitorState>(
-            listener: (context, state) {
-              if (state is VisitorSubmitSuccess) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Visitor pass requested successfully!')),
-                );
-                Navigator.pop(context, true);
-              } else if (state is VisitorFailure) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Failed to submit visitor request: ${state.message}')),
-                );
-              }
-            },
-            builder: (context, state) {
-              final isLoading = state is VisitorLoading;
+      child: BlocConsumer<VisitorBloc, VisitorState>(
+        listener: (context, state) {
+          if (state is VisitorSubmitSuccess) {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Visitor pass requested successfully!')));
+            Navigator.pop(context, true);
+          } else if (state is VisitorFailure) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to submit visitor request: ${state.message}')));
+          }
+        },
+        builder: (context, state) {
+          final isLoading = state is VisitorLoading;
 
-              return SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Visitor details', style: TextStyle(color: AppColors.muted, fontSize: 14)),
-                    const SizedBox(height: 24),
-                    _buildLabel('Visitor Full Name'),
-                    _buildTextField(_nameController, 'Enter guest name', enabled: !isLoading),
-                    const SizedBox(height: 24),
-                    _buildLabel('Contact Number'),
-                    _buildTextField(_nicController, 'Enter guest contact number', enabled: !isLoading),
-                    const SizedBox(height: 24),
-                    _buildLabel('Visit Purpose'),
-                    _buildDropdownField(enabled: !isLoading),
-                    const SizedBox(height: 32),
-                    if (isLoading)
-                      const Center(
-                        child: CircularProgressIndicator(color: AppColors.cyan),
-                      )
-                    else
-                      GlassButton(
-                        onPressed: () {
-                          final name = _nameController.text.trim();
-                          final contact = _nicController.text.trim();
-
-                          if (name.isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Please enter visitor name')),
-                            );
-                            return;
-                          }
-                          if (contact.isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Please enter a contact number')),
-                            );
-                            return;
-                          }
-                          if (_roomId == null) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('You need a room assigned before requesting a visitor. Contact your hostel warden.')),
-                            );
-                            return;
-                          }
-
-                          // Format today's date as YYYY-MM-DD
-                          final now = DateTime.now();
-                          final visitDate = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-
-                          context.read<VisitorBloc>().add(
-                                SubmitVisitorRequest(
-                                  roomId: _roomId!,
-                                  visitorName: name,
-                                  visitorContact: contact,
-                                  purpose: _selectedPurpose,
-                                  visitDate: visitDate,
-                                  visitTime: 'Anytime',
-                                ),
-                              );
-                        },
-                        color: AppColors.primary,
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text('Submit details', style: TextStyle(color: AppColors.text, fontSize: 16, fontWeight: FontWeight.bold)),
-                            SizedBox(width: 8),
-                            Icon(Icons.check_circle_outline, size: 18),
-                          ],
+          return Scaffold(
+            appBar: AppBar(title: const Text('New visitor')),
+            bottomNavigationBar: SafeArea(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(20, 8, 20, 12 + MediaQuery.of(context).viewInsets.bottom),
+                child: PrimaryButton(
+                  label: 'Request pass',
+                  icon: Icons.check_circle_rounded,
+                  loading: isLoading,
+                  onPressed: () => _submit(context),
+                ),
+              ),
+            ),
+            body: ListView(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+              children: [
+                const Text(
+                  'Your warden reviews each request. You\'ll get an alert once it is approved.',
+                  style: TextStyle(color: AppColors.muted, fontSize: 14, height: 1.45),
+                ),
+                const SizedBox(height: 20),
+                const FieldLabel('Visitor full name'),
+                TextField(
+                  controller: _nameController,
+                  enabled: !isLoading,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: const InputDecoration(hintText: 'Enter guest name', prefixIcon: Icon(Icons.person_outline_rounded)),
+                ),
+                const SizedBox(height: 18),
+                const FieldLabel('Contact number'),
+                TextField(
+                  controller: _contactController,
+                  enabled: !isLoading,
+                  keyboardType: TextInputType.phone,
+                  decoration: const InputDecoration(hintText: 'Enter guest contact number', prefixIcon: Icon(Icons.phone_outlined)),
+                ),
+                const SizedBox(height: 18),
+                const FieldLabel('Visit date'),
+                AppCard(
+                  onTap: isLoading ? null : _pickDate,
+                  radius: 14,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.event_rounded, color: AppColors.muted),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          formatShortDate(_visitDate),
+                          style: const TextStyle(color: AppColors.ink, fontWeight: FontWeight.w600, fontSize: 15),
                         ),
                       ),
-                    const SizedBox(height: 20),
-                  ],
+                      const Text(
+                        'Change',
+                        style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700),
+                      ),
+                    ],
+                  ),
                 ),
-              );
-            },
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLabel(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8, left: 4),
-      child: Text(text, style: const TextStyle(color: AppColors.muted, fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
-    );
-  }
-
-  Widget _buildTextField(TextEditingController controller, String hint, {required bool enabled}) {
-    return GlassCard(
-      borderRadius: BorderRadius.circular(16),
-      color: AppColors.surfaceElevated.withValues(alpha: 0.4),
-      borderColor: AppColors.primary.withValues(alpha: 0.2),
-      child: TextField(
-        controller: controller,
-        enabled: enabled,
-        style: const TextStyle(color: AppColors.text),
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: const TextStyle(color: AppColors.muted),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-          border: InputBorder.none,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDropdownField({required bool enabled}) {
-    return GlassCard(
-      borderRadius: BorderRadius.circular(16),
-      color: AppColors.surfaceElevated.withValues(alpha: 0.4),
-      borderColor: AppColors.primary.withValues(alpha: 0.2),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-      child: DropdownButtonFormField<String>(
-        initialValue: _selectedPurpose,
-        dropdownColor: AppColors.surfaceElevated,
-        decoration: const InputDecoration(border: InputBorder.none),
-        hint: const Text('Select purpose', style: TextStyle(color: AppColors.muted)),
-        icon: const Icon(Icons.arrow_drop_down, color: AppColors.cyan),
-        style: const TextStyle(color: AppColors.text),
-        items: ['Personal Visit', 'Family Visit', 'Academic Connection']
-            .map((value) => DropdownMenuItem<String>(value: value, child: Text(value)))
-            .toList(),
-        onChanged: enabled
-            ? (value) {
-                if (value != null) {
-                  setState(() {
-                    _selectedPurpose = value;
-                  });
-                }
-              }
-            : null,
+                const SizedBox(height: 18),
+                const FieldLabel('Purpose of visit'),
+                ..._purposes.entries.map((e) {
+                  final selected = _selectedPurpose == e.key;
+                  return AppCard(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    radius: 14,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                    color: selected ? AppColors.primarySoft : AppColors.surface,
+                    borderColor: selected ? AppColors.primary : AppColors.border,
+                    onTap: isLoading ? null : () => setState(() => _selectedPurpose = e.key),
+                    child: Row(
+                      children: [
+                        Icon(e.value, color: selected ? AppColors.primary : AppColors.muted),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            e.key,
+                            style: TextStyle(color: AppColors.ink, fontWeight: selected ? FontWeight.w700 : FontWeight.w500, fontSize: 15),
+                          ),
+                        ),
+                        Icon(
+                          selected ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded,
+                          color: selected ? AppColors.primary : AppColors.faint,
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              ],
+            ),
+          );
+        },
       ),
     );
   }

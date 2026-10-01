@@ -24,6 +24,15 @@ class AccommodationRepositoryImpl implements AccommodationRepository {
   }
 
   @override
+  Future<String?> currentRoomId() async {
+    try {
+      return (await getCurrentStudent()).roomId;
+    } catch (_) {
+      return _secureStorage.getRoomId();
+    }
+  }
+
+  @override
   Future<RoomModel?> getMyRoom() async {
     final studentId = await _secureStorage.getStudentId();
     if (studentId == null) throw const StudentNotRegisteredException();

@@ -40,6 +40,7 @@ class ComplaintBloc extends Bloc<ComplaintEvent, ComplaintState> {
         title: event.title,
         description: event.description,
         roomId: event.roomId,
+        imageData: event.imageData,
       );
       emit(ComplaintSubmitSuccess(incident));
     } catch (e) {
