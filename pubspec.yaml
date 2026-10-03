@@ -41,6 +41,7 @@ dependencies:
   flutter_appauth: ^12.0.2
   firebase_core: ^3.8.0
   firebase_messaging: ^15.1.6
+  image_picker: ^1.2.3
 
 dev_dependencies:
   flutter_test:
@@ -63,6 +64,24 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  assets:
+    - assets/images/logo.png
+
+  # Plus Jakarta Sans from Google Fonts (fonts.google.com/specimen/Plus+Jakarta+Sans),
+  # bundled so the app doesn't fetch fonts at runtime. OFL licence in assets/fonts.
+  fonts:
+    - family: PlusJakartaSans
+      fonts:
+        - asset: assets/fonts/PlusJakartaSans-Regular.ttf
+        - asset: assets/fonts/PlusJakartaSans-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/PlusJakartaSans-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/PlusJakartaSans-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/PlusJakartaSans-ExtraBold.ttf
+          weight: 800
 
   # To add assets to your application, add an assets section, like this:
   # assets:

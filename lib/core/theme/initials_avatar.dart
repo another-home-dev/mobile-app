@@ -19,10 +19,10 @@ class InitialsAvatar extends StatelessWidget {
   Widget build(BuildContext context) {
     return CircleAvatar(
       radius: radius,
-      backgroundColor: AppColors.primary.withValues(alpha: 0.35),
+      backgroundColor: AppColors.accent,
       child: Text(
         initialsOf(name),
-        style: TextStyle(color: AppColors.text, fontSize: radius * 0.7, fontWeight: FontWeight.bold),
+        style: TextStyle(color: AppColors.ink, fontSize: radius * 0.7, fontWeight: FontWeight.w800),
       ),
     );
   }

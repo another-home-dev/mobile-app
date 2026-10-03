@@ -9,6 +9,10 @@ abstract class AccommodationRepository {
 
   Future<StudentModel> updateCurrentStudent(Map<String, String> changes);
 
+  /// The student's current room id, asked of the server so a room the warden
+  /// assigned after login is seen. Falls back to the cached id when offline.
+  Future<String?> currentRoomId();
+
   /// Throws [StudentNotRegisteredException] if the warden hasn't registered
   /// this student yet. Returns null if registered but not yet allocated a
   /// room.

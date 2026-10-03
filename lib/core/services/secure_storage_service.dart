@@ -36,6 +36,18 @@ class SecureStorageService {
   Future<void> saveStudentId(String studentId) => _storage.write(key: 'student_id', value: studentId);
   Future<String?> getStudentId() => _storage.read(key: 'student_id');
 
+  /// The id of the room the warden has assigned this student to, cached on login
+  /// so screens that file requests against a room (maintenance, visitors) can
+  /// reference the real room instead of a placeholder. Absent until a room is assigned.
+  Future<void> saveRoomId(String? roomId) async {
+    if (roomId == null) {
+      await _storage.delete(key: 'room_id');
+    } else {
+      await _storage.write(key: 'room_id', value: roomId);
+    }
+  }
+  Future<String?> getRoomId() => _storage.read(key: 'room_id');
+
   Future<void> clearAll() => _storage.deleteAll();
 
   /// Whether a JWT access token has expired. A token that isn't a JWT (e.g. an

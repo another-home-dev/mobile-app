@@ -11,6 +11,7 @@ class ReportIncidentDto {
   final String description;
   final String roomId;
   final String priority; // 'Low' | 'Medium' | 'High' — matches the backend's MaintenancePriority
+  final String? imageData; // optional photo as a base64 data URL
 
   const ReportIncidentDto({
     required this.category,
@@ -18,6 +19,7 @@ class ReportIncidentDto {
     required this.description,
     required this.roomId,
     this.priority = 'Medium',
+    this.imageData,
   });
 
   Map<String, dynamic> toJson() => {
@@ -32,6 +34,7 @@ class ReportIncidentDto {
         'description': description,
         'roomId': roomId,
         'priority': priority,
+        if (imageData != null) 'imageData': imageData,
       };
 }
 

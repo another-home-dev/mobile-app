@@ -14,12 +14,22 @@ class AccommodationRepositoryImpl implements AccommodationRepository {
   Future<StudentModel> getCurrentStudent() async {
     final student = await _apiService.getCurrentStudent();
     await _secureStorage.saveStudentId(student.id);
+    await _secureStorage.saveRoomId(student.roomId);
     return student;
   }
 
   @override
   Future<StudentModel> updateCurrentStudent(Map<String, String> changes) {
     return _apiService.updateCurrentStudent(changes);
+  }
+
+  @override
+  Future<String?> currentRoomId() async {
+    try {
+      return (await getCurrentStudent()).roomId;
+    } catch (_) {
+      return _secureStorage.getRoomId();
+    }
   }
 
   @override

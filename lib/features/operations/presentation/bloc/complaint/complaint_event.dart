@@ -13,11 +13,13 @@ class SubmitComplaint extends ComplaintEvent {
   final String title;
   final String description;
   final String roomId;
+  final String? imageData;
 
   const SubmitComplaint({
     required this.category,
     required this.title,
     required this.description,
     required this.roomId,
+    this.imageData,
   });
 }

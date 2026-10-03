@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:another_home/core/theme/app_colors.dart';
-import 'package:another_home/core/theme/glass_card.dart';
-import 'package:another_home/core/theme/glass_button.dart';
-import 'package:another_home/core/theme/glass_background.dart';
-import 'package:another_home/core/theme/glass_badge.dart';
+import 'package:another_home/core/theme/ui_components.dart';
 import 'package:another_home/core/di/service_locator.dart';
 import 'package:another_home/core/errors/student_not_registered_exception.dart';
 import 'package:another_home/core/network/dtos/finance_models.dart';
@@ -43,43 +40,60 @@ class _PaymentPageState extends State<PaymentPage> {
   Color _statusColor(String status) {
     switch (status) {
       case 'Paid':
-        return AppColors.green;
+        return AppColors.success;
       case 'Overdue':
-        return AppColors.red;
+        return AppColors.danger;
       default:
-        return AppColors.orange;
+        return AppColors.warning;
     }
   }
 
   Future<void> _payInvoice(InvoiceModel invoice) async {
     final controller = TextEditingController();
-    final reference = await showDialog<String>(
+    final reference = await showModalBottomSheet<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.surfaceElevated,
-        title: const Text('Submit payment reference', style: TextStyle(color: AppColors.text)),
-        content: TextField(
-          controller: controller,
-          style: const TextStyle(color: AppColors.text),
-          decoration: const InputDecoration(hintText: 'e.g. bank transfer slip number'),
+      isScrollControlled: true,
+      builder: (sheetContext) => Padding(
+        padding: EdgeInsets.fromLTRB(24, 0, 24, MediaQuery.of(sheetContext).viewInsets.bottom + 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'Submit payment',
+              style: TextStyle(color: AppColors.ink, fontSize: 20, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '${invoice.description} · Rs. ${invoice.amount.toStringAsFixed(0)}',
+              style: const TextStyle(color: AppColors.muted, fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(height: 20),
+            const FieldLabel('Payment reference'),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              decoration: const InputDecoration(hintText: 'e.g. bank transfer slip number', prefixIcon: Icon(Icons.receipt_long_rounded)),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Your warden will verify the payment and mark the invoice as paid.',
+              style: TextStyle(color: AppColors.muted, fontSize: 12),
+            ),
+            const SizedBox(height: 20),
+            PrimaryButton(
+              label: 'Submit for review',
+              icon: Icons.send_rounded,
+              onPressed: () => Navigator.pop(sheetContext, controller.text.trim()),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          TextButton(
-            onPressed: () => Navigator.pop(context, controller.text.trim()),
-            child: const Text('Submit'),
-          ),
-        ],
       ),
     );
     if (reference == null || reference.isEmpty || !mounted) return;
 
     try {
-      await ServiceLocator.instance.submitPaymentUseCase(
-        invoiceId: invoice.invoiceId,
-        amount: invoice.amount,
-        referenceNumber: reference,
-      );
+      await ServiceLocator.instance.submitPaymentUseCase(invoiceId: invoice.invoiceId, amount: invoice.amount, referenceNumber: reference);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Payment submitted for review.')));
       setState(_load);
@@ -89,85 +103,86 @@ class _PaymentPageState extends State<PaymentPage> {
     }
   }
 
-  Widget _buildStatCard(String label, String value, Color valueColor) {
+  Widget _buildStat(String label, String value, Color color) {
     return Expanded(
-      child: GlassCard(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-        borderRadius: BorderRadius.circular(18),
-        color: AppColors.surfaceElevated.withValues(alpha: 0.45),
-        borderColor: valueColor.withValues(alpha: 0.25),
+      child: AppCard(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: const TextStyle(color: AppColors.muted, fontSize: 12)),
-            const SizedBox(height: 8),
-            Text(value, style: TextStyle(color: valueColor, fontSize: 16, fontWeight: FontWeight.bold)),
+            Text(
+              label,
+              style: const TextStyle(color: AppColors.muted, fontSize: 12, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 6),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                value,
+                style: TextStyle(color: color, fontSize: 16, fontWeight: FontWeight.w800),
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildHistoryItem(InvoiceModel invoice) {
+  Widget _buildInvoice(InvoiceModel invoice) {
     final statusColor = _statusColor(invoice.status);
-    return GlassCard(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(18),
-      borderRadius: BorderRadius.circular(24),
-      color: AppColors.surface.withValues(alpha: 0.5),
-      borderColor: AppColors.text.withValues(alpha: 0.08),
+    final paid = invoice.status == 'Paid';
+    return AppCard(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+              IconTile(icon: paid ? Icons.check_circle_rounded : Icons.receipt_long_rounded, color: statusColor),
+              const SizedBox(width: 14),
               Expanded(
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    GlassCard(
-                      width: 40,
-                      height: 40,
-                      padding: EdgeInsets.zero,
-                      borderRadius: BorderRadius.circular(20),
-                      color: statusColor.withValues(alpha: 0.2),
-                      borderColor: statusColor.withValues(alpha: 0.4),
-                      child: Icon(invoice.status == 'Paid' ? Icons.check : Icons.hourglass_bottom, color: statusColor, size: 18),
+                    Text(
+                      invoice.description,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: AppColors.ink, fontSize: 15, fontWeight: FontWeight.w700),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(invoice.description, style: const TextStyle(color: AppColors.text, fontSize: 16, fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 4),
-                          Text('Due ${invoice.dueDate}', style: const TextStyle(color: AppColors.muted, fontSize: 12)),
-                        ],
-                      ),
-                    ),
+                    const SizedBox(height: 2),
+                    Text('Due ${invoice.dueDate}', style: const TextStyle(color: AppColors.muted, fontSize: 13)),
                   ],
                 ),
               ),
+              const SizedBox(width: 8),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text('Rs. ${invoice.amount.toStringAsFixed(0)}', style: const TextStyle(color: AppColors.text, fontSize: 16, fontWeight: FontWeight.bold)),
+                  Text(
+                    'Rs. ${invoice.amount.toStringAsFixed(0)}',
+                    style: const TextStyle(color: AppColors.ink, fontSize: 15, fontWeight: FontWeight.w800),
+                  ),
                   const SizedBox(height: 6),
-                  GlassBadge(label: invoice.status, color: statusColor),
+                  StatusPill(label: invoice.status, color: statusColor),
                 ],
               ),
             ],
           ),
-          if (invoice.status != 'Paid') ...[
+          if (!paid) ...[
             const SizedBox(height: 14),
-            Align(
-              alignment: Alignment.centerRight,
-              child: GlassButton(
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
                 onPressed: () => _payInvoice(invoice),
-                width: 140,
-                height: 40,
-                color: AppColors.primary,
-                child: const Text('Pay Now', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(0, 44),
+                  foregroundColor: AppColors.primary,
+                  side: const BorderSide(color: AppColors.primary),
+                ),
+                icon: const Icon(Icons.payments_rounded, size: 18),
+                label: const Text('Pay this invoice'),
               ),
             ),
           ],
@@ -179,125 +194,115 @@ class _PaymentPageState extends State<PaymentPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.bg,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: const Text('Payments'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.text),
-          onPressed: () => Navigator.pop(context),
-        ),
-        centerTitle: false,
-      ),
-      body: GlassBackground(
-        child: FutureBuilder<List<InvoiceModel>>(
-          future: _invoicesFuture,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator(color: AppColors.primary));
-            }
-            if (snapshot.hasError) {
-              return Center(
-                child: Text('Failed to load payments: ${snapshot.error}', style: const TextStyle(color: AppColors.red)),
-              );
-            }
-            if (_notRegistered) {
-              return const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(24),
-                  child: Text(
-                    "You haven't been registered by your hostel warden yet, so there are no fee records to show.",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: AppColors.muted),
-                  ),
-                ),
-              );
-            }
+      appBar: AppBar(title: const Text('Payments')),
+      body: FutureBuilder<List<InvoiceModel>>(
+        future: _invoicesFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return MessageView.error(title: "Couldn't load payments", message: '${snapshot.error}', onAction: () => setState(_load));
+          }
+          if (_notRegistered) {
+            return const MessageView(
+              icon: Icons.account_balance_wallet_outlined,
+              title: 'No fee records yet',
+              message: "You haven't been registered by your hostel warden yet, so there are no invoices to show.",
+            );
+          }
 
-            final invoices = snapshot.data ?? [];
-            final pending = invoices.where((i) => i.status != 'Paid').toList();
-            final paid = invoices.where((i) => i.status == 'Paid').toList();
-            final totalPaid = paid.fold<double>(0, (sum, i) => sum + i.amount);
-            final totalPending = pending.fold<double>(0, (sum, i) => sum + i.amount);
-            final nextDue = pending.isNotEmpty ? pending.first : null;
+          final invoices = snapshot.data ?? [];
+          final pending = invoices.where((i) => i.status != 'Paid').toList();
+          final paid = invoices.where((i) => i.status == 'Paid').toList();
+          final totalPaid = paid.fold<double>(0, (sum, i) => sum + i.amount);
+          final totalPending = pending.fold<double>(0, (sum, i) => sum + i.amount);
+          final nextDue = pending.isNotEmpty ? pending.first : null;
 
-            return SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 8),
-                  const Text('Fee management & history', style: TextStyle(color: AppColors.muted, fontSize: 14)),
-                  const SizedBox(height: 24),
-                  GlassCard(
-                    padding: const EdgeInsets.all(24),
-                    borderRadius: BorderRadius.circular(28),
-                    color: AppColors.primaryDeep.withValues(alpha: 0.5),
-                    borderColor: AppColors.primary.withValues(alpha: 0.4),
-                    boxShadow: [
-                      BoxShadow(color: AppColors.primary.withValues(alpha: 0.25), blurRadius: 24, offset: const Offset(0, 10)),
-                    ],
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text('AMOUNT DUE', style: TextStyle(color: AppColors.muted, fontSize: 12, letterSpacing: 1.2, fontWeight: FontWeight.bold)),
-                            GlassCard(
-                              padding: const EdgeInsets.all(12),
-                              borderRadius: BorderRadius.circular(16),
-                              color: AppColors.primary.withValues(alpha: 0.3),
-                              borderColor: AppColors.primary.withValues(alpha: 0.5),
-                              child: const Icon(Icons.credit_card, color: AppColors.cyan, size: 22),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 18),
-                        Text('Rs. ${totalPending.toStringAsFixed(0)}', style: const TextStyle(color: AppColors.text, fontSize: 36, fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 18),
-                        Text(nextDue?.description ?? 'No pending dues', style: const TextStyle(color: AppColors.muted, fontSize: 13)),
-                        if (nextDue != null) ...[
-                          const SizedBox(height: 4),
-                          Text('Due: ${nextDue.dueDate}', style: const TextStyle(color: AppColors.muted, fontSize: 12)),
-                          const SizedBox(height: 20),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: GlassButton(
-                              onPressed: () => _payInvoice(nextDue),
-                              width: 140,
-                              height: 46,
-                              color: AppColors.primary,
-                              child: const Text('Pay Now', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+          return RefreshIndicator(
+            onRefresh: () async {
+              setState(_load);
+              await _invoicesFuture;
+            },
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(22),
+                  decoration: BoxDecoration(color: AppColors.ink, borderRadius: BorderRadius.circular(24)),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            'AMOUNT DUE',
+                            style: TextStyle(
+                              color: AppColors.white.withValues(alpha: 0.7),
+                              fontSize: 12,
+                              letterSpacing: 1.2,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
+                          const Spacer(),
+                          StatusPill(
+                            label: nextDue == null ? 'All paid' : (pending.any((i) => i.status == 'Overdue') ? 'Overdue' : 'Due'),
+                            color: nextDue == null
+                                ? AppColors.success
+                                : (pending.any((i) => i.status == 'Overdue') ? AppColors.danger : AppColors.warning),
+                          ),
                         ],
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        'Rs. ${totalPending.toStringAsFixed(0)}',
+                        style: const TextStyle(color: AppColors.white, fontSize: 36, fontWeight: FontWeight.w800, letterSpacing: -1),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        nextDue == null ? "You're all caught up." : 'Next: ${nextDue.description} · due ${nextDue.dueDate}',
+                        style: TextStyle(color: AppColors.white.withValues(alpha: 0.8), fontSize: 13, fontWeight: FontWeight.w500),
+                      ),
+                      if (nextDue != null) ...[
+                        const SizedBox(height: 18),
+                        PrimaryButton(
+                          label: 'Pay now',
+                          icon: Icons.arrow_forward_rounded,
+                          color: AppColors.accent,
+                          foregroundColor: AppColors.ink,
+                          onPressed: () => _payInvoice(nextDue),
+                        ),
                       ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
-                    children: [
-                      _buildStatCard('Total Paid', 'Rs. ${totalPaid.toStringAsFixed(0)}', AppColors.green),
-                      const SizedBox(width: 12),
-                      _buildStatCard('Pending', 'Rs. ${totalPending.toStringAsFixed(0)}', AppColors.red),
-                      const SizedBox(width: 12),
-                      _buildStatCard('Invoices', '${paid.length} / ${invoices.length}', AppColors.text),
                     ],
                   ),
-                  const SizedBox(height: 28),
-                  const Text('PAYMENT HISTORY', style: TextStyle(color: AppColors.muted, fontSize: 12, letterSpacing: 1.4, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 14),
-                  if (invoices.isEmpty)
-                    const Text('No invoices yet.', style: TextStyle(color: AppColors.muted))
-                  else
-                    ...invoices.map(_buildHistoryItem),
-                ],
-              ),
-            );
-          },
-        ),
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    _buildStat('Paid', 'Rs. ${totalPaid.toStringAsFixed(0)}', AppColors.success),
+                    const SizedBox(width: 10),
+                    _buildStat('Pending', 'Rs. ${totalPending.toStringAsFixed(0)}', AppColors.danger),
+                    const SizedBox(width: 10),
+                    _buildStat('Invoices', '${paid.length} / ${invoices.length}', AppColors.ink),
+                  ],
+                ),
+                const SizedBox(height: 26),
+                const SectionTitle('Payment history'),
+                if (invoices.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: Text(
+                      'No invoices yet.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: AppColors.muted),
+                    ),
+                  )
+                else
+                  ...invoices.map(_buildInvoice),
+              ],
+            ),
+          );
+        },
       ),
     );
   }

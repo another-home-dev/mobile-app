@@ -2,10 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:another_home/core/theme/app_colors.dart';
-import 'package:another_home/core/theme/glass_card.dart';
-import 'package:another_home/core/theme/glass_background.dart';
-import 'package:another_home/core/theme/glass_badge.dart';
 import 'package:another_home/core/theme/initials_avatar.dart';
+import 'package:another_home/core/theme/ui_components.dart';
 
 import '../../../../core/di/service_locator.dart';
 import '../../../../core/network/dtos/accommodation_models.dart';
@@ -19,6 +17,9 @@ import 'modules/notices_page.dart';
 import 'modules/profile_page.dart';
 import 'modules/alerts_page.dart';
 
+/// Signed-in shell: a bottom navigation bar switching between Home, Room,
+/// Payments, Alerts and Profile. Visitors, Maintenance and Notices open as
+/// pushed screens from Home.
 class DashboardPage extends StatefulWidget {
   final User user;
 
@@ -29,8 +30,11 @@ class DashboardPage extends StatefulWidget {
 }
 
 class _DashboardPageState extends State<DashboardPage> {
-  late final Future<StudentModel?> _studentFuture;
-  late final Future<DashboardSummary> _summaryFuture;
+  static const _homeTab = 0, _roomTab = 1, _paymentsTab = 2, _alertsTab = 3, _profileTab = 4;
+
+  int _tab = _homeTab;
+  late Future<StudentModel?> _studentFuture;
+  late Future<DashboardSummary> _summaryFuture;
   late Future<int> _unreadAlertsFuture;
 
   User get user => widget.user;
@@ -53,13 +57,6 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
-  /// Re-fetches the unread count after the student visits the Alerts page,
-  /// where opening an alert marks it as read.
-  Future<void> _openAlerts() async {
-    await Navigator.push(context, MaterialPageRoute(builder: (_) => const AlertsPage()));
-    if (mounted) setState(() => _unreadAlertsFuture = _countUnreadAlerts());
-  }
-
   /// Resolves (and on first login creates) this student's record, and stores its
   /// id for the payment and complaint screens. Returns null if it can't be loaded.
   Future<StudentModel?> _loadStudent() async {
@@ -76,321 +73,407 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
+  void _selectTab(int index) {
+    setState(() {
+      // Opening an alert marks it read, so recount once the student leaves Alerts.
+      if (_tab == _alertsTab && index != _alertsTab) {
+        _unreadAlertsFuture = _countUnreadAlerts();
+      }
+      if (index == _homeTab && _tab != _homeTab) {
+        _summaryFuture = ServiceLocator.instance.dashboardSummaryUseCase();
+      }
+      _tab = index;
+    });
+  }
+
+  Future<void> _push(Widget page) async {
+    await Navigator.push(context, MaterialPageRoute(builder: (_) => page));
+    if (mounted) setState(() => _summaryFuture = ServiceLocator.instance.dashboardSummaryUseCase());
+  }
+
   @override
   Widget build(BuildContext context) {
+    final Widget body = switch (_tab) {
+      _roomTab => const MyRoomPage(),
+      _paymentsTab => const PaymentPage(),
+      _alertsTab => const AlertsPage(),
+      _profileTab => ProfilePage(user: user),
+      _ => _buildHome(),
+    };
+
     return Scaffold(
       backgroundColor: AppColors.bg,
-      body: GlassBackground(
-        child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            child: GlassCard(
-              padding: const EdgeInsets.all(18),
-              borderRadius: BorderRadius.circular(28),
-              blur: 24,
-              color: AppColors.surface.withValues(alpha: 0.5),
-              borderColor: AppColors.text.withValues(alpha: 0.12),
-              boxShadow: [
-                BoxShadow(color: AppColors.cardGlow.withValues(alpha: 0.3), blurRadius: 30, offset: const Offset(0, 18)),
+      body: body,
+      bottomNavigationBar: DecoratedBox(
+        decoration: const BoxDecoration(
+          border: Border(top: BorderSide(color: AppColors.border)),
+        ),
+        child: FutureBuilder<int>(
+          future: _unreadAlertsFuture,
+          builder: (context, snapshot) {
+            final unread = snapshot.data ?? 0;
+            return NavigationBar(
+              selectedIndex: _tab,
+              onDestinationSelected: _selectTab,
+              destinations: [
+                const NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home_rounded), label: 'Home'),
+                const NavigationDestination(icon: Icon(Icons.bed_outlined), selectedIcon: Icon(Icons.bed_rounded), label: 'Room'),
+                const NavigationDestination(
+                  icon: Icon(Icons.account_balance_wallet_outlined),
+                  selectedIcon: Icon(Icons.account_balance_wallet_rounded),
+                  label: 'Payments',
+                ),
+                NavigationDestination(
+                  icon: Badge(
+                    isLabelVisible: unread > 0,
+                    label: Text('$unread'),
+                    backgroundColor: AppColors.danger,
+                    child: const Icon(Icons.notifications_outlined),
+                  ),
+                  selectedIcon: Badge(
+                    isLabelVisible: unread > 0,
+                    label: Text('$unread'),
+                    backgroundColor: AppColors.danger,
+                    child: const Icon(Icons.notifications_rounded),
+                  ),
+                  label: 'Alerts',
+                ),
+                const NavigationDestination(
+                  icon: Icon(Icons.person_outline_rounded),
+                  selectedIcon: Icon(Icons.person_rounded),
+                  label: 'Profile',
+                ),
               ],
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('Good morning,', style: TextStyle(color: AppColors.muted, fontSize: 14)),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Welcome, ${user.name} 👋',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: AppColors.text,
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 0.3,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            GestureDetector(
-                              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MyRoomPage())),
-                              child: FutureBuilder<StudentModel?>(
-                                future: _studentFuture,
-                                builder: (context, snapshot) {
-                                  final student = snapshot.data;
-                                  final String label;
-                                  if (snapshot.connectionState != ConnectionState.done) {
-                                    label = 'Loading room…';
-                                  } else if (student == null) {
-                                    label = 'Room details unavailable';
-                                  } else {
-                                    label = student.roomLabel;
-                                  }
-                                  return GlassBadge(
-                                    label: label,
-                                    color: student?.hasRoom == true ? AppColors.cyan : AppColors.muted,
-                                    icon: Icons.location_on_outlined,
-                                  );
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      GestureDetector(
-                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProfilePage(user: user))),
-                        behavior: HitTestBehavior.opaque,
-                        child: Container(
-                          padding: const EdgeInsets.all(2),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(color: AppColors.cyan.withValues(alpha: 0.6), width: 1.5),
-                            boxShadow: [
-                              BoxShadow(color: AppColors.cyan.withValues(alpha: 0.3), blurRadius: 12),
-                            ],
-                          ),
-                          child: InitialsAvatar(name: user.name),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  FutureBuilder<DashboardSummary>(
-                    future: _summaryFuture,
-                    builder: (context, snapshot) {
-                      final summary = snapshot.data;
-                      final isLoading = snapshot.connectionState == ConnectionState.waiting;
-                      return Row(
-                        children: [
-                          Expanded(
-                            child: _buildSummaryCard(
-                              icon: Icons.build_outlined,
-                              iconColor: AppColors.orange,
-                              title: 'Complaints',
-                              mainText: isLoading ? '—' : (summary?.complaintsCount.toString() ?? '0'),
-                              subText: 'Filed by you',
-                              subTextColor: AppColors.orange,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _buildSummaryCard(
-                              icon: Icons.credit_card_outlined,
-                              iconColor: AppColors.red,
-                              title: 'Payment',
-                              mainText: isLoading ? '—' : (summary?.paymentStatus ?? 'N/A'),
-                              subText: isLoading ? '' : (summary?.pendingAmount ?? ''),
-                              subTextColor: AppColors.red,
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 28),
-                  const Text('QUICK ACTIONS', style: TextStyle(color: AppColors.muted, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
-                  const SizedBox(height: 14),
-                  GridView.count(
-                    crossAxisCount: 3,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    mainAxisSpacing: 10,
-                    crossAxisSpacing: 10,
-                    childAspectRatio: 0.95,
-                    children: [
-                      _buildQuickActionBtn(context, Icons.meeting_room_outlined, 'My Room', AppColors.primary, const MyRoomPage()),
-                      _buildQuickActionBtn(context, Icons.payment_outlined, 'Payment', AppColors.primary, const PaymentPage()),
-                      _buildQuickActionBtn(context, Icons.people_outline, 'Visitor', AppColors.cyan, const VisitorPage()),
-                      _buildQuickActionBtn(context, Icons.build_outlined, 'Maintenance', AppColors.orange, const ComplaintPage()),
-                      _buildQuickActionBtn(context, Icons.notifications_none_outlined, 'Notices', AppColors.green, const NoticesPage()),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-      bottomNavigationBar: GlassCard(
-        margin: EdgeInsets.zero,
-        padding: EdgeInsets.zero,
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(24),
-          topRight: Radius.circular(24),
-        ),
-        color: AppColors.surfaceElevated.withValues(alpha: 0.85),
-        borderColor: AppColors.text.withValues(alpha: 0.1),
-        boxShadow: [
-          BoxShadow(color: AppColors.cardGlow.withValues(alpha: 0.2), blurRadius: 20, offset: const Offset(0, -6)),
-        ],
-        child: SizedBox(
-          height: 74,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildNavItem(
-                context,
-                Icons.home_filled,
-                'Home',
-                isActive: true,
-              ),
-              _buildNavItem(
-                context,
-                Icons.meeting_room_outlined,
-                'Rooms',
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MyRoomPage())),
-              ),
-              _buildNavItem(
-                context,
-                Icons.credit_card_outlined,
-                'Payments',
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PaymentPage())),
-              ),
-              FutureBuilder<int>(
-                future: _unreadAlertsFuture,
-                builder: (context, snapshot) => _buildNavItem(
-                  context,
-                  Icons.notifications_none_outlined,
-                  'Alerts',
-                  badgeCount: snapshot.data ?? 0,
-                  onTap: _openAlerts,
-                ),
-              ),
-              _buildNavItem(
-                context,
-                Icons.person_outline,
-                'Profile',
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProfilePage(user: user))),
-              ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
   }
 
-  Widget _buildSummaryCard({
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-    required String mainText,
-    required String subText,
-    required Color subTextColor,
-  }) {
-    return GlassCard(
-      padding: const EdgeInsets.all(14),
-      borderRadius: BorderRadius.circular(20),
-      color: AppColors.surfaceElevated.withValues(alpha: 0.45),
-      borderColor: AppColors.text.withValues(alpha: 0.08),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              GlassCard(
-                padding: const EdgeInsets.all(7),
-                borderRadius: BorderRadius.circular(12),
-                color: iconColor.withValues(alpha: 0.2),
-                borderColor: iconColor.withValues(alpha: 0.3),
-                child: Icon(icon, color: iconColor, size: 18),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(color: AppColors.muted, fontSize: 13, fontWeight: FontWeight.w600),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Text(
-            mainText,
-            style: const TextStyle(color: AppColors.text, fontSize: 24, fontWeight: FontWeight.bold),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 6),
-          GlassBadge(
-            label: subText,
-            color: subTextColor,
-            fontSize: 10,
-          ),
-        ],
-      ),
-    );
+  String get _greeting {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
   }
 
-  Widget _buildQuickActionBtn(BuildContext context, IconData icon, String label, Color bgColor, Widget targetScreen) {
-    return GlassCard(
-      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => targetScreen)),
-      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
-      borderRadius: BorderRadius.circular(18),
-      color: bgColor.withValues(alpha: 0.15),
-      borderColor: bgColor.withValues(alpha: 0.3),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: AppColors.text, size: 24),
-          const SizedBox(height: 6),
-          Text(
-            label,
-            style: const TextStyle(color: AppColors.muted, fontSize: 12, fontWeight: FontWeight.w500),
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNavItem(
-    BuildContext context,
-    IconData icon,
-    String label, {
-    bool isActive = false,
-    int badgeCount = 0,
-    VoidCallback? onTap,
-  }) {
-    final color = isActive ? AppColors.primary : AppColors.muted;
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+  Widget _buildHome() {
+    final firstName = user.name.trim().split(RegExp(r'\s+')).first;
+    return SafeArea(
+      bottom: false,
+      child: RefreshIndicator(
+        onRefresh: () async {
+          final summary = ServiceLocator.instance.dashboardSummaryUseCase();
+          setState(() {
+            _summaryFuture = summary;
+            _unreadAlertsFuture = _countUnreadAlerts();
+          });
+          await summary.catchError((_) => const DashboardSummary(complaintsCount: 0, paymentStatus: 'N/A', pendingAmount: ''));
+        },
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
           children: [
-            Stack(
-              clipBehavior: Clip.none,
+            Row(
               children: [
-                Icon(icon, color: color, size: 24),
-                if (badgeCount > 0)
-                  Positioned(
-                    right: -4,
-                    top: -4,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: const BoxDecoration(color: AppColors.red, shape: BoxShape.circle),
-                      child: Text(badgeCount.toString(), style: const TextStyle(color: AppColors.text, fontSize: 9, fontWeight: FontWeight.bold)),
-                    ),
+                GestureDetector(
+                  onTap: () => _selectTab(_profileTab),
+                  child: InitialsAvatar(name: user.name, radius: 24),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _greeting,
+                        style: const TextStyle(color: AppColors.muted, fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                      Text(
+                        firstName.isEmpty ? 'Welcome' : firstName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: AppColors.ink, fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.4),
+                      ),
+                    ],
                   ),
+                ),
+                FutureBuilder<int>(
+                  future: _unreadAlertsFuture,
+                  builder: (context, snapshot) {
+                    final unread = snapshot.data ?? 0;
+                    return IconButton.outlined(
+                      onPressed: () => _selectTab(_alertsTab),
+                      tooltip: 'Alerts',
+                      style: IconButton.styleFrom(
+                        backgroundColor: AppColors.surface,
+                        side: const BorderSide(color: AppColors.border),
+                        fixedSize: const Size(48, 48),
+                      ),
+                      icon: Badge(
+                        isLabelVisible: unread > 0,
+                        label: Text('$unread'),
+                        backgroundColor: AppColors.danger,
+                        child: const Icon(Icons.notifications_outlined, color: AppColors.ink),
+                      ),
+                    );
+                  },
+                ),
               ],
             ),
-            const SizedBox(height: 3),
-            Text(label, style: TextStyle(color: color, fontSize: 10, fontWeight: isActive ? FontWeight.bold : FontWeight.normal)),
+            const SizedBox(height: 22),
+            FutureBuilder<StudentModel?>(
+              future: _studentFuture,
+              builder: (context, snapshot) => _RoomHeroCard(
+                student: snapshot.data,
+                loading: snapshot.connectionState != ConnectionState.done,
+                onTap: () => _selectTab(_roomTab),
+              ),
+            ),
+            const SizedBox(height: 16),
+            FutureBuilder<DashboardSummary>(
+              future: _summaryFuture,
+              builder: (context, snapshot) {
+                final loading = snapshot.connectionState == ConnectionState.waiting;
+                final summary = snapshot.data;
+                return _PaymentStatusCard(
+                  loading: loading,
+                  status: summary?.paymentStatus,
+                  detail: summary?.pendingAmount,
+                  onTap: () => _selectTab(_paymentsTab),
+                );
+              },
+            ),
+            const SizedBox(height: 28),
+            const SectionTitle('Quick actions'),
+            _ActionRow(
+              icon: Icons.group_add_rounded,
+              color: AppColors.info,
+              title: 'Visitor passes',
+              subtitle: 'Request a pass for a guest',
+              onTap: () => _push(const VisitorPage()),
+            ),
+            FutureBuilder<DashboardSummary>(
+              future: _summaryFuture,
+              builder: (context, snapshot) {
+                final count = snapshot.data?.complaintsCount;
+                return _ActionRow(
+                  icon: Icons.handyman_rounded,
+                  color: AppColors.warning,
+                  title: 'Maintenance',
+                  subtitle: count == null || count == 0
+                      ? 'Report a problem in your room'
+                      : '$count request${count == 1 ? '' : 's'} filed · Report a problem',
+                  onTap: () => _push(const ComplaintPage()),
+                );
+              },
+            ),
+            _ActionRow(
+              icon: Icons.campaign_rounded,
+              color: AppColors.success,
+              title: 'Notices',
+              subtitle: 'Announcements from your warden',
+              onTap: () => _push(const NoticesPage()),
+            ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _RoomHeroCard extends StatelessWidget {
+  final StudentModel? student;
+  final bool loading;
+  final VoidCallback onTap;
+
+  const _RoomHeroCard({required this.student, required this.loading, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final hasRoom = student?.hasRoom == true;
+    final String title;
+    final String subtitle;
+    if (loading) {
+      title = 'Loading…';
+      subtitle = 'Fetching your room';
+    } else if (student == null) {
+      title = 'Room unavailable';
+      subtitle = "We couldn't load your details. Pull down to retry.";
+    } else if (!hasRoom) {
+      title = 'No room yet';
+      subtitle = 'Your warden will allocate a room soon.';
+    } else {
+      title = 'Room ${student!.roomNumber}';
+      subtitle = student!.buildingName ?? 'Tap to see room details';
+    }
+
+    return Material(
+      color: Colors.transparent,
+      child: Ink(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          gradient: const LinearGradient(
+            colors: [AppColors.primaryBright, AppColors.primaryDark],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          boxShadow: [BoxShadow(color: AppColors.primary.withValues(alpha: 0.22), blurRadius: 24, offset: const Offset(0, 6), spreadRadius: -6)],
+        ),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(24),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'YOUR ROOM',
+                            style: TextStyle(
+                              color: AppColors.white.withValues(alpha: 0.75),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            title,
+                            style: const TextStyle(color: AppColors.white, fontSize: 28, fontWeight: FontWeight.w800, letterSpacing: -0.6),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            subtitle,
+                            style: TextStyle(color: AppColors.white.withValues(alpha: 0.85), fontSize: 14, fontWeight: FontWeight.w500),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(color: AppColors.accent, borderRadius: BorderRadius.circular(16)),
+                      child: const Icon(Icons.bed_rounded, color: AppColors.ink, size: 28),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(color: AppColors.white.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(12)),
+                  child: const Row(
+                    children: [
+                      Text(
+                        'View room details',
+                        style: TextStyle(color: AppColors.white, fontSize: 14, fontWeight: FontWeight.w700),
+                      ),
+                      Spacer(),
+                      Icon(Icons.arrow_forward_rounded, color: AppColors.white, size: 18),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PaymentStatusCard extends StatelessWidget {
+  final bool loading;
+  final String? status;
+  final String? detail;
+  final VoidCallback onTap;
+
+  const _PaymentStatusCard({required this.loading, required this.status, required this.detail, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final Color color = switch (status) {
+      'Paid up' => AppColors.success,
+      'Overdue' => AppColors.danger,
+      'Due' => AppColors.warning,
+      _ => AppColors.muted,
+    };
+    return AppCard(
+      onTap: onTap,
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          const IconTile(icon: Icons.account_balance_wallet_rounded, color: AppColors.primary, size: 48),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Hostel fees',
+                  style: TextStyle(color: AppColors.muted, fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  loading ? 'Checking…' : (detail == null || detail!.isEmpty ? 'Unavailable' : detail!),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: AppColors.ink, fontSize: 16, fontWeight: FontWeight.w800),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          if (!loading && status != null && status != 'N/A') StatusPill(label: status!, color: color),
+          const SizedBox(width: 4),
+          const Icon(Icons.chevron_right_rounded, color: AppColors.faint),
+        ],
+      ),
+    );
+  }
+}
+
+class _ActionRow extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _ActionRow({required this.icon, required this.color, required this.title, required this.subtitle, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      onTap: onTap,
+      child: Row(
+        children: [
+          IconTile(icon: icon, color: color),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(color: AppColors.ink, fontSize: 15, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 2),
+                Text(subtitle, style: const TextStyle(color: AppColors.muted, fontSize: 13)),
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_right_rounded, color: AppColors.faint),
+        ],
       ),
     );
   }

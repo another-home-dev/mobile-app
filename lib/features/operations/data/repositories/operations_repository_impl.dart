@@ -18,12 +18,14 @@ class OperationsRepositoryImpl implements OperationsRepository {
     required String title,
     required String description,
     required String roomId,
+    String? imageData,
   }) {
     final dto = ReportIncidentDto(
       category: category,
       title: title,
       description: description,
       roomId: roomId,
+      imageData: imageData,
     );
     return _apiService.reportIncident(dto);
   }

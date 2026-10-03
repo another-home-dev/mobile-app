@@ -11,12 +11,14 @@ class ReportIncidentUseCase {
     required String title,
     required String description,
     required String roomId,
+    String? imageData,
   }) {
     return repository.reportIncident(
       category: category,
       title: title,
       description: description,
       roomId: roomId,
+      imageData: imageData,
     );
   }
 }

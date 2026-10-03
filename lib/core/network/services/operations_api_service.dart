@@ -1,3 +1,5 @@
+import 'package:jwt_decoder/jwt_decoder.dart';
+
 import '../api_client.dart';
 import '../dtos/auth_models.dart';
 import '../dtos/operations_models.dart';
@@ -11,12 +13,22 @@ class OperationsApiService {
 
   // --- Maintenance / Incidents ---
 
-  /// View this student's own logged maintenance incidents (backend paginates and
-  /// filters server-side by studentId; page 1 is enough for the mobile list)
-  /// GET /operations/maintenance?studentId={id}
+  /// View this student's own logged maintenance incidents (backend paginates;
+  /// page 1 is enough for the mobile list)
+  /// GET /operations/maintenance?studentId={sub}
+  ///
+  /// Operations files requests under the caller's Asgardeo `sub` (the gateway's
+  /// x-user-id), not the accommodation Student.id, so filter by the access
+  /// token's `sub`. Newer operations builds also enforce this server-side.
   Future<List<IncidentModel>> getIncidents() async {
-    final studentId = await _secureStorage.getStudentId();
-    final query = studentId != null ? '?studentId=$studentId' : '';
+    final token = await _secureStorage.getAccessToken();
+    String? sub;
+    try {
+      sub = token == null ? null : JwtDecoder.decode(token)['sub'] as String?;
+    } catch (_) {
+      sub = null;
+    }
+    final query = sub != null ? '?studentId=${Uri.encodeQueryComponent(sub)}' : '';
     final response = await _apiClient.get('/operations/maintenance$query');
     final data = (response as Map<String, dynamic>)['data'];
     if (data is List) {

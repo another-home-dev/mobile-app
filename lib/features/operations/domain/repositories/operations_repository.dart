@@ -8,6 +8,7 @@ abstract class OperationsRepository {
     required String title,
     required String description,
     required String roomId,
+    String? imageData,
   });
 
   Future<List<VisitorRequestModel>> getVisitors();
